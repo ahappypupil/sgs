@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三国杀 · 一对一</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <!-- 武将选择界面 -->
+    <div id="select-screen" class="screen active">
+        <div class="select-header">
+            <h1>三 国 杀</h1>
+            <p class="subtitle">一 对 一 对 战</p>
+        </div>
+        <div class="select-info">
+            <p>请选择你的武将</p>
+        </div>
+        <!-- 势力Tab -->
+        <div id="faction-tabs" class="faction-tabs"></div>
+        <!-- 武将列表 -->
+        <div id="hero-list" class="hero-list"></div>
+        <div class="select-confirm">
+            <button id="confirm-hero" disabled>开始对战</button>
+        </div>
+    </div>
+
+    <!-- 浮动人物简介卡片 -->
+    <div id="hero-profile" class="hero-profile hidden"></div>
+
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="screen">
+        <!-- AI区域 -->
+        <div id="ai-area" class="player-area ai-area">
+            <div class="player-info-bar">
+                <div class="hero-avatar" id="ai-avatar"></div>
+                <div class="hero-details">
+                    <div class="hero-name" id="ai-name"></div>
+                    <div class="hero-faction" id="ai-faction"></div>
+                    <div class="hp-bar" id="ai-hp"></div>
+                    <div class="hero-skills" id="ai-skills"></div>
+                </div>
+                <div class="equip-area" id="ai-equip"></div>
+                <div class="card-count">
+                    <span class="card-count-icon">🂠</span>
+                    <span id="ai-card-count">0</span>
+                </div>
+            </div>
+            <div class="ai-hand-area">
+                <div id="ai-hand" class="hand-cards"></div>
+            </div>
+        </div>
+
+        <!-- 战斗日志/消息区域 -->
+        <div id="battle-log" class="battle-log">
+            <div id="log-content"></div>
+        </div>
+
+        <!-- 操作按钮区域 -->
+        <div id="action-bar" class="action-bar"></div>
+
+        <!-- 玩家区域 -->
+        <div id="player-area" class="player-area">
+            <div class="player-info-bar">
+                <div class="hero-avatar" id="player-avatar"></div>
+                <div class="hero-details">
+                    <div class="hero-name" id="player-name"></div>
+                    <div class="hero-faction" id="player-faction"></div>
+                    <div class="hp-bar" id="player-hp"></div>
+                    <div class="hero-skills" id="player-skills"></div>
+                </div>
+                <div class="equip-area" id="player-equip"></div>
+            </div>
+            <div class="player-hand-area">
+                <div id="player-hand" class="hand-cards"></div>
+            </div>
+        </div>
+
+        <!-- 响应面板（被杀时弹出） -->
+        <div id="response-panel" class="response-panel hidden">
+            <div class="response-content">
+                <p id="response-prompt"></p>
+                <div id="response-cards" class="response-cards"></div>
+                <button id="response-cancel" class="action-btn">不响应</button>
+            </div>
+        </div>
+
+        <!-- 游戏结束界面 -->
+        <div id="gameover-screen" class="gameover-overlay hidden">
+            <div class="gameover-content">
+                <h1 id="gameover-title"></h1>
+                <p id="gameover-message"></p>
+                <button id="restart-btn" class="action-btn">再来一局</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 卡牌详情提示 -->
+    <div id="card-tooltip" class="card-tooltip hidden"></div>
+
+    <!-- 技能选择面板 -->
+    <div id="skill-panel" class="skill-panel hidden">
+        <div class="skill-content">
+            <p id="skill-prompt"></p>
+            <div id="skill-cards" class="skill-cards"></div>
+            <button id="skill-cancel" class="action-btn">取消</button>
+        </div>
+    </div>
+
+    <script src="js/cards.js"></script>
+    <script src="js/heroes.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>
