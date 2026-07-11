@@ -25,6 +25,24 @@ body {
     z-index: -1;
 }
 
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+    #bg-video {
+        object-fit: cover;
+        width: 100vw;
+        height: 100vh;
+        min-width: 100%;
+        min-height: 100%;
+    }
+    
+    #game-screen {
+        min-height: 100vh;
+        min-height: -webkit-fill-available;
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
 /* ===== 屏幕切换 ===== */
 .screen {
     display: none;
@@ -1497,6 +1515,132 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
     padding: 1px 5px;
+}
+
+/* 移动端全面适配 */
+@media screen and (max-width: 768px) {
+    /* 音频控制面板 */
+    .audio-controls {
+        top: 5px;
+        right: 5px;
+        padding: 6px 10px;
+        gap: 10px;
+    }
+    
+    .audio-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+    
+    .volume-slider-container {
+        width: 60px;
+    }
+    
+    /* 玩家区域 */
+    .player-area {
+        padding: 8px 10px;
+        min-height: auto;
+    }
+    
+    /* 武将牌尺寸 */
+    .hero-card-large {
+        width: 80px;
+        height: 104px;
+    }
+    
+    .hero-card-bg {
+        width: 80px;
+        height: 104px;
+    }
+    
+    /* 手牌区域 */
+    .hand-area {
+        min-height: 100px;
+        padding: 8px;
+    }
+    
+    .card {
+        width: 60px;
+        height: 84px;
+        font-size: 12px;
+    }
+    
+    /* 战斗日志 */
+    .battle-log {
+        max-height: 120px;
+        padding: 6px 10px;
+    }
+    
+    .log-entry {
+        font-size: 12px;
+        padding: 3px 8px;
+    }
+    
+    /* 操作按钮 */
+    .action-bar {
+        padding: 8px;
+        gap: 8px;
+    }
+    
+    .action-btn {
+        padding: 8px 16px;
+        font-size: 14px;
+    }
+    
+    /* 装备槽 */
+    .equip-slot {
+        font-size: 11px;
+        padding: 4px 8px;
+    }
+    
+    /* 背景选择面板 */
+    .bg-panel {
+        width: 90vw;
+        max-width: 300px;
+        max-height: 70vh;
+    }
+    
+    .bg-grid {
+        grid-template-columns: repeat(3, 1fr);
+        gap: 8px;
+    }
+    
+    .bg-item {
+        height: 70px;
+    }
+    
+    /* 响应式面板 */
+    #response-panel {
+        width: 95vw;
+        max-width: 400px;
+    }
+    
+    #response-cards {
+        max-height: 200px;
+    }
+    
+    /* 提示信息 */
+    .phase-info {
+        font-size: 14px;
+        padding: 6px 12px;
+    }
+    
+    /* 技能标签 */
+    .skill-tag {
+        font-size: 10px;
+        padding: 2px 6px;
+    }
+    
+    /* 血条 */
+    .hp-bar {
+        width: 60px;
+        height: 10px;
+    }
+    
+    .hp-text {
+        font-size: 11px;
+    }
 }
 
 .profile-skill-desc {

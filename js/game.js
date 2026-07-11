@@ -350,6 +350,11 @@ const Game = {
         video.loop = true;
         video.muted = true;
         video.playsInline = true;
+        // iOS Safari 需要这些属性
+        video.setAttribute('webkit-playsinline', 'true');
+        video.setAttribute('x5-playsinline', 'true');
+        video.setAttribute('x5-video-player-type', 'h5');
+        video.setAttribute('x5-video-player-fullscreen', 'false');
         video.style.cssText = `
             position: fixed;
             top: 0;
@@ -358,9 +363,23 @@ const Game = {
             height: 100%;
             object-fit: cover;
             z-index: -1;
+            pointer-events: none;
         `;
         
         document.body.insertBefore(video, document.body.firstChild);
+        
+        // iOS 需要手动播放
+        const playVideo = () => {
+            video.play().catch(e => {
+                console.log('视频自动播放被阻止，等待用户交互');
+            });
+        };
+        playVideo();
+        
+        // 监听视频加载完成
+        video.addEventListener('loadedmetadata', () => {
+            video.play().catch(() => {});
+        });
         
         // 有背景时，显示留言区背景框，并应用当前样式设置
         if (battleLog) {
