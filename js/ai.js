@@ -220,17 +220,20 @@ const AI = {
     decideDuelResponse(game) {
         const ai = game.players[1];
         const shas = ai.hand.filter(c => c.defKey === 'sha');
+        // 龙胆：闪当杀
+        const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
+        const allShas = [...shas, ...longdanShans];
         
-        if (shas.length === 0) return { play: false, card: null };
+        if (allShas.length === 0) return { play: false, card: null };
         
         // HP低时尽量出杀
-        if (ai.hp <= 2) return { play: true, card: shas[0] };
+        if (ai.hp <= 2) return { play: true, card: allShas[0] };
         
         // 手牌中杀多时继续出
-        if (shas.length >= 2) return { play: true, card: shas[0] };
+        if (allShas.length >= 2) return { play: true, card: allShas[0] };
         
         // 随机
-        if (Math.random() < 0.4) return { play: true, card: shas[0] };
+        if (Math.random() < 0.4) return { play: true, card: allShas[0] };
         
         return { play: false, card: null };
     },

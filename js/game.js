@@ -1197,8 +1197,12 @@ const Game = {
             if (response.play) {
                 current.hand = current.hand.filter(c => c.id !== response.card.id);
                 this.discardPile.push(response.card);
-                this.log(`${current.hero.name}出【杀】`, 'ai');
-                this.sayHeroLine(currentIdx, 'dodge');
+                // 判断是否使用了龙胆（闪当杀）
+                const isLongdan = response.card.defKey === 'shan' && hasSkill(current.hero, '龙胆');
+                const skillText = isLongdan ? '（龙胆）' : '';
+                this.log(`${current.hero.name}出【杀】${skillText}`, 'ai');
+                if (isLongdan) this.sayHeroLine(currentIdx, 'skill');
+                else this.sayHeroLine(currentIdx, 'dodge');
                 this.render();
                 await this.delay(800);
                 await this.juedouStepAsync(otherIdx, currentIdx, damageCard, false);
@@ -1212,8 +1216,12 @@ const Game = {
             if (response.play) {
                 this.players[0].hand = this.players[0].hand.filter(c => c.id !== response.card.id);
                 this.discardPile.push(response.card);
-                this.log(`你出【杀】`, 'player');
-                this.sayHeroLine(0, 'dodge');
+                // 判断是否使用了龙胆（闪当杀）
+                const isLongdan = response.card.defKey === 'shan' && hasSkill(this.players[0].hero, '龙胆');
+                const skillText = isLongdan ? '（龙胆）' : '';
+                this.log(`你出【杀】${skillText}`, 'player');
+                if (isLongdan) this.sayHeroLine(0, 'skill');
+                else this.sayHeroLine(0, 'dodge');
                 this.render();
                 await this.delay(800);
                 await this.juedouStepAsync(otherIdx, currentIdx, damageCard, false);
@@ -1968,13 +1976,29 @@ const Game = {
             
             const player = this.players[0];
             const shas = player.hand.filter(c => c.defKey === 'sha');
+            // 龙胆：闪当杀
+            const longdanShans = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'shan') : [];
             
             document.getElementById('response-prompt').textContent = '决斗！是否出【杀】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
             
+            // 显示普通杀
             shas.forEach(card => {
                 const cardEl = this.createCardElement(card, true);
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+            
+            // 显示龙胆闪（标记为可当杀使用）
+            longdanShans.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                // 添加龙胆标记
+                const badge = document.createElement('div');
+                badge.textContent = '龙胆';
+                badge.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #4a90d9; color: white; font-size: 10px; padding: 1px 4px; border-radius: 3px;';
+                cardEl.style.position = 'relative';
+                cardEl.appendChild(badge);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
             });
@@ -2484,17 +2508,111 @@ const Game = {
             const utterance = new SpeechSynthesisUtterance(line);
             utterance.lang = 'zh-CN';
             utterance.rate = 1.0;
-            utterance.pitch = playerIdx === 0 ? 1.1 : 0.9;
+            
+            // 根据性别和武将设置音色参数
+            const voiceConfig = this.getHeroVoiceConfig(player.hero, playerIdx);
+            utterance.pitch = voiceConfig.pitch;
+            utterance.rate = voiceConfig.rate;
+            
             utterance.volume = this.ttsVolume;
+            
+            // 尝试选择合适的声音
             const voices = window.speechSynthesis.getVoices();
-            const zhVoice = voices.find(v => v.lang.startsWith('zh'));
-            if (zhVoice) utterance.voice = zhVoice;
+            const voice = this.selectBestVoice(voices, voiceConfig);
+            if (voice) utterance.voice = voice;
+            
             window.speechSynthesis.speak(utterance);
         }
         
         // 标记刚朗读了台词，让后续log不重复朗读（短时间内）
         this._heroLineSpoken = true;
         setTimeout(() => { this._heroLineSpoken = false; }, 200);
+    },
+    
+    // 获取武将语音配置
+    getHeroVoiceConfig(hero, playerIdx) {
+        // 女性武将列表（根据名字判断）
+        const femaleHeroes = ['黄月英', '孙尚香', '甄姬', '小乔', '貂蝉', '大乔', '蔡文姬', '祝融', '步练师', '张春华', '王异', '吴国太'];
+        const isFemale = femaleHeroes.includes(hero.name);
+        
+        // 根据武将ID分配不同的音色参数
+        const voiceMap = {
+            // 男性武将 - 不同音色
+            'liubei': { pitch: 1.0, rate: 1.0, type: 'male' },      // 刘备 - 沉稳
+            'guanyu': { pitch: 0.85, rate: 0.95, type: 'male' },    // 关羽 - 低沉威严
+            'zhangfei': { pitch: 0.8, rate: 1.05, type: 'male' },   // 张飞 - 粗犷洪亮
+            'zhaoyun': { pitch: 1.0, rate: 1.0, type: 'male' },     // 赵云 - 清亮
+            'zhugeliang': { pitch: 1.05, rate: 0.95, type: 'male' },// 诸葛亮 - 睿智从容
+            'machao': { pitch: 0.9, rate: 1.0, type: 'male' },      // 马超 - 英气
+            'huangzhong': { pitch: 0.85, rate: 0.9, type: 'male' }, // 黄忠 - 老成
+            'caocao': { pitch: 0.9, rate: 1.0, type: 'male' },      // 曹操 - 霸气
+            'simayi': { pitch: 0.95, rate: 0.95, type: 'male' },    // 司马懿 - 阴柔
+            'zhouyu': { pitch: 1.0, rate: 1.0, type: 'male' },      // 周瑜 - 儒雅
+            'sunquan': { pitch: 1.0, rate: 1.0, type: 'male' },     // 孙权 - 稳重
+            'lvbu': { pitch: 0.8, rate: 1.0, type: 'male' },        // 吕布 - 威猛
+            
+            // 女性武将 - 不同音色
+            'huangyueying': { pitch: 1.15, rate: 1.0, type: 'female' }, // 黄月英 - 知性
+            'sunshangxiang': { pitch: 1.2, rate: 1.05, type: 'female' },// 孙尚香 - 活泼英气
+            'zhenji': { pitch: 1.1, rate: 0.95, type: 'female' },    // 甄姬 - 柔美
+            'xiaoqiao': { pitch: 1.25, rate: 1.0, type: 'female' },  // 小乔 - 甜美
+        };
+        
+        // 获取配置，如果没有则按性别默认
+        let config = voiceMap[hero.id];
+        if (!config) {
+            if (isFemale) {
+                // 女性默认音色，根据名字哈希值微调
+                const hash = hero.name.charCodeAt(0) % 3;
+                config = {
+                    '0': { pitch: 1.15, rate: 1.0, type: 'female' },  // 知性
+                    '1': { pitch: 1.2, rate: 1.0, type: 'female' },   // 明亮
+                    '2': { pitch: 1.1, rate: 0.95, type: 'female' }   // 温柔
+                }[hash];
+            } else {
+                // 男性默认音色，根据名字哈希值微调
+                const hash = hero.name.charCodeAt(0) % 4;
+                config = {
+                    '0': { pitch: 1.0, rate: 1.0, type: 'male' },     // 标准
+                    '1': { pitch: 0.9, rate: 0.95, type: 'male' },    // 低沉
+                    '2': { pitch: 1.05, rate: 1.0, type: 'male' },    // 清亮
+                    '3': { pitch: 0.95, rate: 1.05, type: 'male' }    // 稳重
+                }[hash];
+            }
+        }
+        
+        return config;
+    },
+    
+    // 选择最佳语音
+    selectBestVoice(voices, voiceConfig) {
+        if (!voices || voices.length === 0) return null;
+        
+        // 优先选择中文语音
+        const zhVoices = voices.filter(v => v.lang && v.lang.startsWith('zh'));
+        if (zhVoices.length === 0) return voices[0];
+        
+        // 根据性别偏好选择（如果系统支持）
+        if (voiceConfig.type === 'female') {
+            // 尝试找听起来更女性化的声音（通常名字包含 female/woman 或音调较高）
+            const femaleVoice = zhVoices.find(v => 
+                v.name.toLowerCase().includes('female') ||
+                v.name.toLowerCase().includes('woman') ||
+                v.name.includes('女')
+            );
+            if (femaleVoice) return femaleVoice;
+        } else {
+            // 尝试找听起来更男性化的声音
+            const maleVoice = zhVoices.find(v => 
+                v.name.toLowerCase().includes('male') ||
+                v.name.toLowerCase().includes('man') ||
+                v.name.includes('男')
+            );
+            if (maleVoice) return maleVoice;
+        }
+        
+        // 返回第一个中文语音
+        return zhVoices[0];
     },
 
     // 显示台词气泡
