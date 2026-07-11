@@ -23,6 +23,10 @@ const Game = {
     ttsEnabled: true,
     bgmEnabled: true,
     bgmAudio: null,
+    bgmVolume: 0.4,
+    ttsVolume: 0.8,
+    currentBgIndex: -1,  // -1 表示默认背景
+    bgList: [],
     lastVoiceTime: 0,
     
     // ===== 初始化 =====
@@ -52,6 +56,339 @@ const Game = {
         document.getElementById('restart-btn').addEventListener('click', () => {
             this.restart();
         });
+        
+        // 音频控制事件监听
+        this.setupAudioControls();
+    },
+    
+    setupAudioControls() {
+        const bgmToggle = document.getElementById('bgm-toggle');
+        const ttsToggle = document.getElementById('tts-toggle');
+        const bgmVolume = document.getElementById('bgm-volume');
+        const ttsVolume = document.getElementById('tts-volume');
+        
+        if (bgmToggle) {
+            bgmToggle.addEventListener('click', () => {
+                this.toggleBGM();
+                this.updateAudioControlUI();
+            });
+        }
+        
+        if (ttsToggle) {
+            ttsToggle.addEventListener('click', () => {
+                this.ttsEnabled = !this.ttsEnabled;
+                if (!this.ttsEnabled && window.speechSynthesis) {
+                    window.speechSynthesis.cancel();
+                }
+                this.updateAudioControlUI();
+            });
+        }
+        
+        if (bgmVolume) {
+            bgmVolume.addEventListener('input', (e) => {
+                this.bgmVolume = parseInt(e.target.value) / 100;
+                if (this.bgmAudio) {
+                    this.bgmAudio.volume = this.bgmVolume;
+                }
+            });
+        }
+        
+        if (ttsVolume) {
+            ttsVolume.addEventListener('input', (e) => {
+                this.ttsVolume = parseInt(e.target.value) / 100;
+            });
+        }
+        
+        this.updateAudioControlUI();
+        
+        // 背景选择事件
+        const bgToggle = document.getElementById('bg-toggle');
+        const bgPanelClose = document.getElementById('bg-panel-close');
+        
+        if (bgToggle) {
+            bgToggle.addEventListener('click', () => {
+                this.toggleBgPanel();
+            });
+        }
+        
+        if (bgPanelClose) {
+            bgPanelClose.addEventListener('click', () => {
+                this.toggleBgPanel();
+            });
+        }
+        
+        // 日志样式设置
+        this.logBgColor = 'black'; // 默认黑色背景
+        this.logOpacity = 30; // 默认透明度30%
+        this.initLogStylePanel();
+        
+        // 初始化背景列表
+        this.initBackgroundList();
+    },
+    
+    initLogStylePanel() {
+        const logStyleToggle = document.getElementById('log-style-toggle');
+        const logStylePanel = document.getElementById('log-style-panel');
+        const logStyleClose = document.getElementById('log-style-close');
+        const logOpacitySlider = document.getElementById('log-opacity-slider');
+        const logOpacityValue = document.getElementById('log-opacity-value');
+        
+        // 打开/关闭面板
+        if (logStyleToggle) {
+            logStyleToggle.addEventListener('click', () => {
+                logStylePanel.classList.toggle('hidden');
+            });
+        }
+        
+        if (logStyleClose) {
+            logStyleClose.addEventListener('click', () => {
+                logStylePanel.classList.add('hidden');
+            });
+        }
+        
+        // 颜色预设选择
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('selected'));
+                e.target.classList.add('selected');
+                this.logBgColor = e.target.dataset.color;
+                this.updateLogStyle();
+            });
+        });
+        
+        // 默认选中黑色
+        const defaultColor = document.querySelector('.color-preset[data-color="black"]');
+        if (defaultColor) defaultColor.classList.add('selected');
+        
+        // 透明度滑块
+        if (logOpacitySlider) {
+            logOpacitySlider.addEventListener('input', (e) => {
+                this.logOpacity = parseInt(e.target.value);
+                if (logOpacityValue) {
+                    logOpacityValue.textContent = this.logOpacity + '%';
+                }
+                this.updateLogStyle();
+            });
+        }
+    },
+    
+    updateLogStyle() {
+        const battleLog = document.getElementById('battle-log');
+        if (!battleLog) return;
+        
+        // 颜色映射
+        const colorMap = {
+            'black': '0, 0, 0',
+            'darkblue': '26, 26, 46',
+            'darkgreen': '26, 46, 26',
+            'darkred': '46, 26, 26',
+            'darkpurple': '46, 26, 46'
+        };
+        
+        const rgb = colorMap[this.logBgColor] || '0, 0, 0';
+        const opacity = this.logOpacity / 100;
+        
+        // 设置CSS变量
+        battleLog.style.setProperty('--log-bg-color', rgb);
+        battleLog.style.setProperty('--log-opacity', opacity);
+    },
+    
+    updateAudioControlUI() {
+        const bgmToggle = document.getElementById('bgm-toggle');
+        const ttsToggle = document.getElementById('tts-toggle');
+        
+        if (bgmToggle) {
+            bgmToggle.textContent = this.bgmEnabled ? '🎵' : '🎵';
+            bgmToggle.classList.toggle('active', this.bgmEnabled);
+            bgmToggle.style.opacity = this.bgmEnabled ? '1' : '0.5';
+        }
+        
+        if (ttsToggle) {
+            ttsToggle.textContent = this.ttsEnabled ? '🔊' : '🔇';
+            ttsToggle.classList.toggle('active', this.ttsEnabled);
+            ttsToggle.style.opacity = this.ttsEnabled ? '1' : '0.5';
+        }
+    },
+    
+    // ===== 背景选择 =====
+    initBackgroundList() {
+        // 背景图片列表 (bg0.png ~ bg17.png)
+        this.bgList = [];
+        for (let i = 0; i <= 17; i++) {
+            this.bgList.push(`img/background/bg${i}.png`);
+        }
+        
+        // 动态视频背景列表 (dtbg folder)
+        this.videoBgList = [
+            { name: '动态1', path: 'img/dtbg/dtbg1.mp4' },
+            { name: '动态2', path: 'img/dtbg/dtbg2.mp4' },
+            { name: '动态3', path: 'img/dtbg/dbtbg3.mp4' }
+        ];
+        
+        // 渲染背景网格
+        const grid = document.getElementById('bg-grid');
+        if (!grid) return;
+        
+        grid.innerHTML = '';
+        
+        // 添加"默认背景"选项
+        const defaultItem = this.createBgItem(-1, '默认');
+        grid.appendChild(defaultItem);
+        
+        // 添加所有背景图
+        this.bgList.forEach((bg, index) => {
+            const item = this.createBgItem(index, `背景${index + 1}`, bg);
+            grid.appendChild(item);
+        });
+        
+        // 添加视频背景
+        this.videoBgList.forEach((video, index) => {
+            const item = this.createVideoBgItem(index, video.name, video.path);
+            grid.appendChild(item);
+        });
+    },
+    
+    createBgItem(index, label, imgUrl = null) {
+        const item = document.createElement('div');
+        item.className = 'bg-item' + (this.currentBgIndex === index ? ' selected' : '');
+        item.dataset.bgIndex = index;
+        
+        if (imgUrl) {
+            item.style.backgroundImage = `url('${imgUrl}')`;
+            item.style.backgroundSize = 'cover';
+            item.style.backgroundPosition = 'center';
+        } else {
+            item.style.background = 'linear-gradient(135deg, #1a3a1a 0%, #0d1f0d 50%, #1a3a1a 100%)';
+            item.innerHTML = '<span class="bg-item-label">默认</span>';
+        }
+        
+        item.addEventListener('click', () => {
+            this.selectBackground(index);
+        });
+        
+        return item;
+    },
+    
+    createVideoBgItem(index, name, videoPath) {
+        const item = document.createElement('div');
+        const videoIndex = 1000 + index; // 视频背景索引从1000开始，避免与图片冲突
+        item.className = 'bg-item' + (this.currentBgIndex === videoIndex ? ' selected' : '');
+        item.dataset.bgIndex = videoIndex;
+        item.dataset.isVideo = 'true';
+        item.dataset.videoPath = videoPath;
+        
+        // 视频预览（第一帧）
+        item.style.background = '#1a1a2e';
+        item.innerHTML = `
+            <span class="bg-item-label" style="color: #88ccff;">🎬 ${name}</span>
+            <div style="position: absolute; bottom: 4px; right: 4px; font-size: 10px; color: #888;">MP4</div>
+        `;
+        
+        item.addEventListener('click', () => {
+            this.selectVideoBackground(index, videoPath);
+        });
+        
+        return item;
+    },
+    
+    selectBackground(index) {
+        this.currentBgIndex = index;
+        const gameScreen = document.getElementById('game-screen');
+        const battleLog = document.getElementById('battle-log');
+        
+        // 移除视频背景（如果有）
+        this.removeVideoBackground();
+        
+        if (index === -1) {
+            // 默认背景
+            gameScreen.style.backgroundImage = '';
+            gameScreen.style.background = 'linear-gradient(180deg, #1a3a1a 0%, #0d1f0d 50%, #1a3a1a 100%)';
+            // 无背景时，隐藏留言区背景框
+            if (battleLog) {
+                battleLog.classList.remove('with-bg');
+            }
+        } else {
+            // 选择背景图
+            gameScreen.style.backgroundImage = `url('${this.bgList[index]}')`;
+            gameScreen.style.backgroundSize = 'cover';
+            gameScreen.style.backgroundPosition = 'center';
+            gameScreen.style.backgroundRepeat = 'no-repeat';
+            // 有背景时，显示留言区背景框，并应用当前样式设置
+            if (battleLog) {
+                battleLog.classList.add('with-bg');
+                this.updateLogStyle();
+            }
+        }
+        
+        // 更新选中状态
+        document.querySelectorAll('.bg-item').forEach(item => {
+            item.classList.toggle('selected', parseInt(item.dataset.bgIndex) === index);
+        });
+        
+        // 关闭面板
+        this.toggleBgPanel();
+    },
+    
+    selectVideoBackground(videoIndex, videoPath) {
+        const videoBgIndex = 1000 + videoIndex;
+        this.currentBgIndex = videoBgIndex;
+        const gameScreen = document.getElementById('game-screen');
+        const battleLog = document.getElementById('battle-log');
+        
+        // 清除普通背景设置
+        gameScreen.style.backgroundImage = '';
+        gameScreen.style.background = 'transparent';
+        
+        // 移除旧的视频背景
+        this.removeVideoBackground();
+        
+        // 创建视频元素
+        const video = document.createElement('video');
+        video.id = 'bg-video';
+        video.src = videoPath;
+        video.autoplay = true;
+        video.loop = true;
+        video.muted = true;
+        video.playsInline = true;
+        video.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            z-index: -1;
+        `;
+        
+        document.body.insertBefore(video, document.body.firstChild);
+        
+        // 有背景时，显示留言区背景框，并应用当前样式设置
+        if (battleLog) {
+            battleLog.classList.add('with-bg');
+            this.updateLogStyle();
+        }
+        
+        // 更新选中状态
+        document.querySelectorAll('.bg-item').forEach(item => {
+            item.classList.toggle('selected', parseInt(item.dataset.bgIndex) === videoBgIndex);
+        });
+        
+        // 关闭面板
+        this.toggleBgPanel();
+    },
+    
+    removeVideoBackground() {
+        const oldVideo = document.getElementById('bg-video');
+        if (oldVideo) {
+            oldVideo.remove();
+        }
+    },
+    
+    toggleBgPanel() {
+        const panel = document.getElementById('bg-panel');
+        if (panel) {
+            panel.classList.toggle('hidden');
+        }
     },
 
     // ===== 武将选择 =====
@@ -87,8 +424,8 @@ const Game = {
             const roleClass = hero.role === ROLE.LORD ? 'lord' : 'minister';
             const roleIcon = hero.role === ROLE.LORD ? '👑' : '⚔';
             card.innerHTML = `
-                <div class="hero-portrait" style="background:${factionColor};border-color:${factionColor}">
-                    ${hero.emoji}
+                <div class="hero-portrait" style="border-color:${factionColor}">
+                    <img src="${hero.avatar}" alt="${hero.name}" class="hero-portrait-img" />
                     <span class="role-badge ${roleClass}" title="${hero.role}">${roleIcon}</span>
                 </div>
                 <div class="hero-card-name">${hero.name}</div>
@@ -98,12 +435,18 @@ const Game = {
                     ${'❤'.repeat(hero.maxHp)}
                 </div>
             `;
-            card.addEventListener('click', () => {
-                document.querySelectorAll('.hero-card').forEach(c => c.classList.remove('selected'));
-                card.classList.add('selected');
-                this.selectedHeroId = hero.id;
-                document.getElementById('confirm-hero').disabled = false;
-            });
+        card.addEventListener('click', () => {
+            document.querySelectorAll('.hero-card').forEach(c => c.classList.remove('selected'));
+            card.classList.add('selected');
+            this.selectedHeroId = hero.id;
+            document.getElementById('confirm-hero').disabled = false;
+        });
+        // 双击直接开战
+        card.addEventListener('dblclick', () => {
+            this.selectedHeroId = hero.id;
+            document.getElementById('confirm-hero').disabled = false;
+            this.startGame();
+        });
             // 浮动简介
             card.addEventListener('mouseenter', (e) => this.showHeroProfile(hero, e));
             card.addEventListener('mouseleave', () => this.hideHeroProfile());
@@ -127,7 +470,7 @@ const Game = {
 
         profile.innerHTML = `
             <div class="profile-header" style="background:linear-gradient(135deg,${factionColor},rgba(0,0,0,0.8))">
-                <div class="profile-avatar" style="background:${factionColor}">${hero.emoji}</div>
+                <div class="profile-avatar" style="background:${factionColor}"><img src="${hero.avatar}" alt="${hero.name}" class="profile-avatar-img" /></div>
                 <div class="profile-titles">
                     <div class="profile-name">${hero.name}</div>
                     <div class="profile-subtitle">${hero.title}</div>
@@ -1134,7 +1477,7 @@ const Game = {
                 const cardBack = document.createElement('div');
                 cardBack.className = 'card card-back';
                 cardBack.style.cursor = 'pointer';
-                cardBack.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;height:100%;color:#aaa;font-size:13px;">手牌 ${idx + 1}</div>`;
+                cardBack.innerHTML = `<div style="position:absolute;bottom:8px;right:8px;color:#888;font-size:12px;">手牌${idx + 1}</div>`;
                 cardBack.addEventListener('mouseenter', () => cardBack.style.opacity = '0.7');
                 cardBack.addEventListener('mouseleave', () => cardBack.style.opacity = '1');
                 cardBack.addEventListener('click', () => {
@@ -1896,12 +2239,18 @@ const Game = {
         const player = this.players[idx];
         const prefix = idx === 0 ? 'player' : 'ai';
         
-        // 头像
+        // 头像区域 - 显示武将牌样式（带背景图）
         const avatar = document.getElementById(`${prefix}-avatar`);
         const factionColor = FACTION_COLOR[player.hero.faction];
-        avatar.style.background = factionColor;
-        avatar.style.borderColor = '#ffd700';
-        avatar.textContent = player.hero.emoji;
+        avatar.style.borderColor = factionColor;
+        avatar.style.backgroundImage = `url('${player.hero.avatar}')`;
+        avatar.style.backgroundSize = 'cover';
+        avatar.style.backgroundPosition = 'center';
+        avatar.innerHTML = `
+            <div class="hero-card-mini">
+                <div class="hero-card-faction-badge" style="background:${factionColor}">${player.hero.faction}</div>
+            </div>
+        `;
         
         // 头像悬停展示武将技能详情
         avatar.onmouseenter = (e) => this.showHeroTooltip(player.hero, e);
@@ -1910,7 +2259,7 @@ const Game = {
         
         // 名字
         document.getElementById(`${prefix}-name`).textContent = player.hero.name;
-        document.getElementById(`${prefix}-faction`).textContent = `${player.hero.faction}势力`;
+        document.getElementById(`${prefix}-faction`).textContent = `${player.hero.faction}势力 · ${player.hero.title}`;
         
         // 血量
         const hpBar = document.getElementById(`${prefix}-hp`);
@@ -2004,30 +2353,7 @@ const Game = {
         const actionBar = document.getElementById('action-bar');
         actionBar.innerHTML = '';
         
-        // 语音开关按钮（始终显示）
-        const ttsBtn = document.createElement('button');
-        ttsBtn.className = 'action-btn tts-btn' + (this.ttsEnabled ? ' active' : '');
-        ttsBtn.textContent = this.ttsEnabled ? '🔊 语音开' : '🔇 语音关';
-        ttsBtn.addEventListener('click', () => {
-            this.ttsEnabled = !this.ttsEnabled;
-            if (!this.ttsEnabled && window.speechSynthesis) {
-                window.speechSynthesis.cancel();
-            }
-            this.render();
-            if (this.ttsEnabled) {
-                this.speak('语音已开启');
-            }
-        });
-        actionBar.appendChild(ttsBtn);
-        
-        // 背景音乐开关按钮
-        const bgmBtn = document.createElement('button');
-        bgmBtn.className = 'action-btn bgm-btn' + (this.bgmEnabled ? ' active' : '');
-        bgmBtn.textContent = this.bgmEnabled ? '🎵 音乐开' : '🎵 音乐关';
-        bgmBtn.addEventListener('click', () => {
-            this.toggleBGM();
-        });
-        actionBar.appendChild(bgmBtn);
+        // 音乐和语音控制已移到右上角音频控制面板
         
         if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing) {
             // 技能按钮
@@ -2057,14 +2383,14 @@ const Game = {
             actionBar.appendChild(endBtn);
         } else if (this.currentPlayer === 1 && !this.gameOver) {
             const indicator = document.createElement('span');
-            indicator.className = 'ai-thinking';
+            indicator.className = 'action-info-box ai-thinking';
             indicator.textContent = `${this.players[1].hero.name}思考中`;
             actionBar.appendChild(indicator);
         }
         
         if (this.discardMode) {
             const info = document.createElement('span');
-            info.style.color = '#ffd700';
+            info.className = 'action-info-box';
             info.textContent = `请弃置${this.needDiscardCount - this.discardedCount}张牌`;
             actionBar.appendChild(info);
         }
@@ -2132,7 +2458,7 @@ const Game = {
         utterance.lang = 'zh-CN';
         utterance.rate = 1.1;
         utterance.pitch = 1.0;
-        utterance.volume = 1.0;
+        utterance.volume = this.ttsVolume;
         
         // 尝试使用中文语音
         const voices = window.speechSynthesis.getVoices();
@@ -2159,7 +2485,7 @@ const Game = {
             utterance.lang = 'zh-CN';
             utterance.rate = 1.0;
             utterance.pitch = playerIdx === 0 ? 1.1 : 0.9;
-            utterance.volume = 1.0;
+            utterance.volume = this.ttsVolume;
             const voices = window.speechSynthesis.getVoices();
             const zhVoice = voices.find(v => v.lang.startsWith('zh'));
             if (zhVoice) utterance.voice = zhVoice;
@@ -2201,7 +2527,7 @@ const Game = {
         if (this.bgmAudio) return;
         this.bgmAudio = new Audio('music/sgs.mp3');
         this.bgmAudio.loop = true;
-        this.bgmAudio.volume = 0.4;
+        this.bgmAudio.volume = this.bgmVolume;
     },
 
     playBGM() {

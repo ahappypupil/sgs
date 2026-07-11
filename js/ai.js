@@ -102,7 +102,7 @@ const AI = {
         }
 
         // 优先级8: 出杀
-        if (!ai.hasSlashed || this.canSlashUnlimited(ai)) {
+        if (!game.hasSlashedThisTurn || this.canSlashUnlimited(ai)) {
             const sha = this.findCard(ai.hand, 'sha');
             if (sha) {
                 // 检查对方空城
@@ -113,7 +113,7 @@ const AI = {
                 }
             }
             // 关羽武圣：红色牌当杀
-            if (!ai.hasSlashed || this.canSlashUnlimited(ai)) {
+            if (!game.hasSlashedThisTurn || this.canSlashUnlimited(ai)) {
                 if (hasSkill(ai.hero, '武圣')) {
                     const redCard = ai.hand.find(c => c.isRed && c.defKey !== 'sha' && c.defKey !== 'tao');
                     if (redCard) {

@@ -30,6 +30,67 @@
 
     <!-- 游戏界面 -->
     <div id="game-screen" class="screen">
+        <!-- 右上角控制面板 -->
+        <div id="audio-controls" class="audio-controls">
+            <div class="audio-control-item">
+                <button id="bgm-toggle" class="audio-btn" title="背景音乐">
+                    🎵
+                </button>
+                <div class="volume-slider-container">
+                    <input type="range" id="bgm-volume" min="0" max="100" value="40" class="volume-slider">
+                    <span class="volume-label">音乐</span>
+                </div>
+            </div>
+            <div class="audio-control-item">
+                <button id="tts-toggle" class="audio-btn" title="语音朗读">
+                    🔊
+                </button>
+                <div class="volume-slider-container">
+                    <input type="range" id="tts-volume" min="0" max="100" value="80" class="volume-slider">
+                    <span class="volume-label">朗读</span>
+                </div>
+            </div>
+            <div class="audio-control-item">
+                <button id="bg-toggle" class="audio-btn" title="切换背景">
+                    🖼️
+                </button>
+            </div>
+            <div class="audio-control-item">
+                <button id="log-style-toggle" class="audio-btn" title="日志样式设置">
+                    💬
+                </button>
+            </div>
+        </div>
+
+        <!-- 日志样式设置面板 -->
+        <div id="log-style-panel" class="bg-panel hidden" style="width: 220px;">
+            <div class="bg-panel-header">日志样式</div>
+            <div class="log-style-content" style="padding: 12px;">
+                <div class="log-style-item">
+                    <label>背景颜色</label>
+                    <div class="color-presets">
+                        <div class="color-preset" data-color="black" style="background: #000;"></div>
+                        <div class="color-preset" data-color="darkblue" style="background: #1a1a2e;"></div>
+                        <div class="color-preset" data-color="darkgreen" style="background: #1a2e1a;"></div>
+                        <div class="color-preset" data-color="darkred" style="background: #2e1a1a;"></div>
+                        <div class="color-preset" data-color="darkpurple" style="background: #2e1a2e;"></div>
+                    </div>
+                </div>
+                <div class="log-style-item" style="margin-top: 12px;">
+                    <label>透明度 <span id="log-opacity-value">30%</span></label>
+                    <input type="range" id="log-opacity-slider" min="0" max="100" value="30" class="volume-slider" style="width: 100%; margin-top: 6px;">
+                </div>
+            </div>
+            <button id="log-style-close" class="bg-panel-close">✕</button>
+        </div>
+
+        <!-- 背景选择面板 -->
+        <div id="bg-panel" class="bg-panel hidden">
+            <div class="bg-panel-header">选择背景</div>
+            <div id="bg-grid" class="bg-grid"></div>
+            <button id="bg-panel-close" class="bg-panel-close">✕</button>
+        </div>
+
         <!-- AI区域 -->
         <div id="ai-area" class="player-area ai-area">
             <div class="player-info-bar">

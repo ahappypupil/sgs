@@ -251,6 +251,62 @@ const HEROES = [
             defeat: ['谋反……失败了吗……']
         }
     },
+    {
+        id: 'huangyueying',
+        name: '黄月英',
+        faction: FACTION.SHU,
+        role: ROLE.MINISTER,
+        maxHp: 3,
+        emoji: '英',
+        title: '蜀中才女',
+        bio: '诸葛亮之妻，黄承彦之女。才貌双全，精通天文地理、奇门遁甲。相传木牛流马即出自其手，是三国时期著名的才女。',
+        skills: [
+            {
+                name: '集智',
+                type: 'triggered',
+                desc: '当你使用一张非转化的普通锦囊牌时，你可以摸一张牌。',
+            }
+        ],
+        lines: {
+            turnStart: ['月英在此', '且看此计'],
+            attack: ['接招', '看招'],
+            dodge: ['闪', '休想'],
+            damage: ['可恶', '好疼'],
+            dying: ['月英……不甘', '夫君……'],
+            heal: ['多谢', '正好'],
+            skill: ['集思广益，智慧无穷', '才女之智，不输男儿'],
+            victory: ['才女之名，名副其实', '多谢手下留情'],
+            defeat: ['才女也有失算时……']
+        }
+    },
+    {
+        id: 'sunshangxiang',
+        name: '孙尚香',
+        faction: FACTION.SHU,
+        role: ROLE.MINISTER,
+        maxHp: 3,
+        emoji: '香',
+        title: '枭姬',
+        bio: '孙权之妹，刘备之妻。自幼好武，才捷刚猛，有诸兄之风。刘备入蜀后，孙权派人接回，后投江殉情。',
+        skills: [
+            {
+                name: '枭姬',
+                type: 'triggered',
+                desc: '当你失去装备区里的一张牌后，你可以摸两张牌。',
+            }
+        ],
+        lines: {
+            turnStart: ['孙尚香在此', '谁来与我一战'],
+            attack: ['看招', '接招'],
+            dodge: ['闪', '休想'],
+            damage: ['可恶', '好疼'],
+            dying: ['香……不甘', '玄德……'],
+            heal: ['多谢', '正好'],
+            skill: ['枭姬之勇，不输男儿', '看箭'],
+            victory: ['承让了', '多谢手下留情'],
+            defeat: ['巾帼英雄……也有败时……']
+        }
+    },
 
     // ===== 魏 =====
     {
@@ -447,6 +503,34 @@ const HEROES = [
             skill: ['驱虎吞狼，坐收渔利', '王佐之才，岂是虚名'],
             victory: ['一切尽在掌中', '运筹帷幄，决胜千里'],
             defeat: ['空有王佐之才……']
+        }
+    },
+    {
+        id: 'zhenji',
+        name: '甄姬',
+        faction: FACTION.WEI,
+        role: ROLE.MINISTER,
+        maxHp: 3,
+        emoji: '甄',
+        title: '文昭甄皇后',
+        bio: '中山无极人，魏文帝曹丕之妻，魏明帝曹叡生母。倾国倾城，才情出众。曹植《洛神赋》相传即为纪念她而作。',
+        skills: [
+            {
+                name: '洛神',
+                type: 'triggered',
+                desc: '回合开始阶段，你可以进行判定，若为黑色，你获得此牌并可以继续判定。',
+            }
+        ],
+        lines: {
+            turnStart: ['翩若惊鸿，婉若游龙', '洛神赋成'],
+            attack: ['且看此招', '休走'],
+            dodge: ['闪', '未必'],
+            damage: ['好疼', '可恶'],
+            dying: ['甄姬……去了', '子桓……'],
+            heal: ['多谢', '甚好'],
+            skill: ['洛神之姿，倾国倾城', '翩若惊鸿，婉若游龙'],
+            victory: ['承让了', '多谢手下留情'],
+            defeat: ['红颜薄命……']
         }
     },
 
@@ -647,6 +731,34 @@ const HEROES = [
             defeat: ['谋事在人，成事在天……']
         }
     },
+    {
+        id: 'xiaoqiao',
+        name: '小乔',
+        faction: FACTION.WU,
+        role: ROLE.MINISTER,
+        maxHp: 3,
+        emoji: '乔',
+        title: '吴国佳人',
+        bio: '庐江皖县人，乔公次女，周瑜之妻。与其姐大乔并称"二乔"，国色天香，沉鱼落雁。曹操曾言"铜雀春深锁二乔"。',
+        skills: [
+            {
+                name: '天香',
+                type: 'triggered',
+                desc: '当你受到伤害时，你可以弃置一张红桃手牌，将此伤害转移给一名其他角色。',
+            }
+        ],
+        lines: {
+            turnStart: ['小乔在此', '请多关照'],
+            attack: ['且看此招', '休走'],
+            dodge: ['闪', '未必'],
+            damage: ['好疼', '可恶'],
+            dying: ['小乔……去了', '公瑾……'],
+            heal: ['多谢', '甚好'],
+            skill: ['天香国色，倾国倾城', '将军且慢'],
+            victory: ['承让了', '多谢手下留情'],
+            defeat: ['红颜薄命……']
+        }
+    },
 
     // ===== 群 =====
     {
@@ -797,6 +909,15 @@ const HEROES = [
 function getHeroById(id) {
     return HEROES.find(h => h.id === id);
 }
+
+// 自动为每个武将分配头像路径 (优先PNG，回退SVG)
+HEROES.forEach(h => {
+    const pngPath = `img/heroes/${h.id}.png`;
+    const svgPath = `img/heroes/${h.id}.svg`;
+    // 使用require或直接判断文件是否存在，这里默认优先PNG
+    h.avatar = pngPath;
+    h.avatarFallback = svgPath;
+});
 
 // 获取武将的被动技能
 function getPassiveSkills(hero) {
