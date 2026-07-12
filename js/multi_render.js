@@ -179,7 +179,7 @@ Object.assign(MultiGame, {
         const actionBar = document.getElementById('action-bar');
         actionBar.innerHTML = '';
 
-        if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver) {
+        if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver && !this.zhihengMode && !this.lijianMode && !this.fanjianMode) {
             const player = this.players[0];
 
             // 苦肉
@@ -188,6 +188,33 @@ Object.assign(MultiGame, {
                 btn.className = 'action-btn green';
                 btn.textContent = '苦肉';
                 btn.addEventListener('click', () => this.executeKurou(0));
+                actionBar.appendChild(btn);
+            }
+
+            // 制衡（孙权）
+            if (hasSkill(player.hero, '制衡') && !this.hasUsedZhihengThisTurn && player.hand.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '制衡';
+                btn.addEventListener('click', () => this.executeZhiheng(0));
+                actionBar.appendChild(btn);
+            }
+
+            // 离间（貂蝉）
+            if (hasSkill(player.hero, '离间') && !this.hasUsedLijianThisTurn && player.hand.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '离间';
+                btn.addEventListener('click', () => this.executeLijian(0));
+                actionBar.appendChild(btn);
+            }
+
+            // 反间（周瑜）
+            if (hasSkill(player.hero, '反间') && !this.hasUsedFanjianThisTurn && player.hand.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '反间';
+                btn.addEventListener('click', () => this.executeFanjian(0));
                 actionBar.appendChild(btn);
             }
 
@@ -201,7 +228,7 @@ Object.assign(MultiGame, {
                 }
             });
             actionBar.appendChild(endBtn);
-        } else if (this.currentPlayer !== 0 && !this.gameOver && this.players[this.currentPlayer]) {
+        } else if (this.currentPlayer !== 0 && !this.gameOver && this.players[this.currentPlayer] && !this.zhihengMode && !this.lijianMode) {
             const indicator = document.createElement('span');
             indicator.className = 'action-info-box ai-thinking';
             indicator.textContent = `${this.players[this.currentPlayer].hero.name}思考中`;
@@ -212,6 +239,46 @@ Object.assign(MultiGame, {
             const info = document.createElement('span');
             info.className = 'action-info-box';
             info.textContent = `请弃置${this.needDiscardCount - this.discardedCount}张牌`;
+            actionBar.appendChild(info);
+        }
+
+        if (this.zhihengMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `制衡：已选${this.zhihengCards.length}张`;
+            actionBar.appendChild(info);
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'action-btn green';
+            confirmBtn.textContent = '确认制衡';
+            confirmBtn.addEventListener('click', () => {
+                const player = this.players[0];
+                if (this.zhihengCards.length === 0) { this.log('请至少选择一张牌', 'system'); return; }
+                this.zhihengCards.forEach(c => {
+                    player.hand = player.hand.filter(h => h.id !== c.id);
+                    this.discardPile.push(c);
+                });
+                this.log(`你发动【制衡】，弃了${this.zhihengCards.length}张牌`, 'player');
+                const count = this.zhihengCards.length;
+                this.zhihengCards = [];
+                for (let i = 0; i < count; i++) player.hand.push(this.drawCard());
+                this.log(`你摸了${count}张牌`, 'player');
+                this.render();
+                if (this.zhihengResolver) { const r = this.zhihengResolver; this.zhihengResolver = null; r(); }
+            });
+            actionBar.appendChild(confirmBtn);
+        }
+
+        if (this.lijianMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `离间：请选择一张手牌弃置`;
+            actionBar.appendChild(info);
+        }
+
+        if (this.fanjianMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `反间：请选择一张手牌给对手`;
             actionBar.appendChild(info);
         }
     }

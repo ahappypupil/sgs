@@ -133,6 +133,7 @@ Object.assign(MultiGame, {
 
             const player = this.players[0];
             const shas = player.hand.filter(c => c.defKey === 'sha');
+            const longdanShans = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'shan') : [];
 
             document.getElementById('response-prompt').textContent = '南蛮入侵！是否出【杀】？';
             const container = document.getElementById('response-cards');
@@ -140,6 +141,19 @@ Object.assign(MultiGame, {
 
             shas.forEach(card => {
                 const cardEl = this.createCardElement(card, true);
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+
+            longdanShans.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                if (card.defKey === 'shan') {
+                    const badge = document.createElement('div');
+                    badge.textContent = '龙胆';
+                    badge.style.cssText = 'position:absolute;top:2px;right:2px;background:#4a90d9;color:white;font-size:10px;padding:1px 4px;border-radius:3px;';
+                    cardEl.style.position = 'relative';
+                    cardEl.appendChild(badge);
+                }
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
             });
@@ -206,6 +220,21 @@ Object.assign(MultiGame, {
                     const cardEl = this.createCardElement(card, true);
                     cardEl.style.borderColor = '#88ccff';
                     cardEl.title = '仁德：当桃使用';
+                    cardEl.addEventListener('click', () => {
+                        this.responseSelectedCards = [card];
+                        this.confirmPeachResponseWithSkill();
+                    });
+                    container.appendChild(cardEl);
+                });
+            }
+
+            // 急救（华佗）：红色牌当桃
+            if (hasSkill(player.hero, '急救')) {
+                const redCards = player.hand.filter(c => c.isRed && c.defKey !== 'tao');
+                redCards.forEach(card => {
+                    const cardEl = this.createCardElement(card, true);
+                    cardEl.style.borderColor = '#ff8866';
+                    cardEl.title = '急救：当桃使用';
                     cardEl.addEventListener('click', () => {
                         this.responseSelectedCards = [card];
                         this.confirmPeachResponseWithSkill();
@@ -321,6 +350,109 @@ Object.assign(MultiGame, {
         });
     },
 
+    // ===== 询问玩家是否使用天香 =====
+    askPlayerTianxiang() {
+        return new Promise((resolve) => {
+            this.responseMode = 'tianxiang';
+            this.responseResolver = resolve;
+
+            document.getElementById('response-prompt').textContent = '是否发动【天香】转移伤害？';
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+
+            const btn1 = document.createElement('button');
+            btn1.className = 'action-btn green';
+            btn1.textContent = '发动天香';
+            btn1.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r(true);
+            });
+            container.appendChild(btn1);
+
+            const btn2 = document.createElement('button');
+            btn2.className = 'action-btn';
+            btn2.textContent = '不发动';
+            btn2.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r(false);
+            });
+            container.appendChild(btn2);
+
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
+    // ===== 询问玩家是否使用反间给的牌 =====
+    askPlayerFanjianChoice(card) {
+        return new Promise((resolve) => {
+            this.responseMode = 'fanjian';
+            this.responseResolver = resolve;
+
+            const canUse = card.defKey === 'sha' || (card.defKey === 'tao') || card.type === 'trick' || card.type === 'equipment';
+            const promptText = canUse
+                ? `周瑜发动【反间】，给你【${card.name}】。选择：使用此牌 或 受到1点伤害`
+                : `周瑜发动【反间】，给你【${card.name}】。你无法使用此牌，将受到1点伤害`;
+            document.getElementById('response-prompt').textContent = promptText;
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+
+            // 展示牌
+            const cardEl = this.createCardElement(card, false);
+            cardEl.style.cursor = 'default';
+            container.appendChild(cardEl);
+
+            if (canUse) {
+                const btn1 = document.createElement('button');
+                btn1.className = 'action-btn green';
+                btn1.textContent = '使用此牌';
+                btn1.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r('use');
+                });
+                container.appendChild(btn1);
+
+                const btn2 = document.createElement('button');
+                btn2.className = 'action-btn';
+                btn2.textContent = '受到1点伤害';
+                btn2.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r('damage');
+                });
+                container.appendChild(btn2);
+            } else {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn';
+                btn.textContent = '受到1点伤害';
+                btn.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r('damage');
+                });
+                container.appendChild(btn);
+            }
+
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
     // ===== 响应卡牌点击处理 =====
     isValidResponseCard(card) {
         const player = this.players[0];
@@ -329,7 +461,12 @@ Object.assign(MultiGame, {
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
             return false;
         }
-        if (this.responseMode === 'duel' || this.responseMode === 'nanman') return card.defKey === 'sha';
+        if (this.responseMode === 'duel') return card.defKey === 'sha';
+        if (this.responseMode === 'nanman') {
+            if (card.defKey === 'sha') return true;
+            if (hasSkill(player.hero, '龙胆') && card.defKey === 'shan') return true;
+            return false;
+        }
         if (this.responseMode === 'wanjian') {
             if (card.defKey === 'shan') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
@@ -434,6 +571,27 @@ Object.assign(MultiGame, {
         }
         if (this.responseMode === 'peach') { this.confirmPeachResponse(); return; }
         if (this.responseMode === 'ganglie') {
+            const r = this.responseResolver;
+            this.responseResolver = null;
+            this.responseMode = null;
+            document.getElementById('response-panel').classList.add('hidden');
+            r('damage');
+        }
+        if (this.responseMode === 'luoshen') {
+            const r = this.responseResolver;
+            this.responseResolver = null;
+            this.responseMode = null;
+            document.getElementById('response-panel').classList.add('hidden');
+            r(false);
+        }
+        if (this.responseMode === 'tianxiang') {
+            const r = this.responseResolver;
+            this.responseResolver = null;
+            this.responseMode = null;
+            document.getElementById('response-panel').classList.add('hidden');
+            r(false);
+        }
+        if (this.responseMode === 'fanjian') {
             const r = this.responseResolver;
             this.responseResolver = null;
             this.responseMode = null;

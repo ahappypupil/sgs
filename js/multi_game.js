@@ -13,6 +13,11 @@ const MultiGame = {
     gameOver: false,
     hasSlashedThisTurn: false,
     hasUsedKurouThisTurn: false,
+    hasUsedZhihengThisTurn: false,
+    hasUsedLijianThisTurn: false,
+    hasUsedFanjianThisTurn: false,
+    fanjianMode: false,
+    fanjianResolver: null,
     responseResolver: null,
     responseMode: null,
     responseSelectedCards: [],
@@ -333,10 +338,16 @@ const MultiGame = {
         this.currentPlayer = playerIdx;
         this.hasSlashedThisTurn = false;
         this.hasUsedKurouThisTurn = false;
+        this.hasUsedZhihengThisTurn = false;
+        this.hasUsedLijianThisTurn = false;
+        this.hasUsedFanjianThisTurn = false;
         this.processing = false;
         this.log(`${player.hero.name}的回合开始`, playerIdx === 0 ? 'player' : 'ai');
         this.sayHeroLine(playerIdx, 'turnStart');
         this.render();
+
+        // 洛神技能（甄姬）- 回合开始阶段
+        await this.processLuoshen(playerIdx);
 
         // 摸牌阶段
         let drawCount = 2;
@@ -377,13 +388,28 @@ const MultiGame = {
                 await this.delay(800);
                 continue;
             }
+            if (action.action === 'skill_zhiheng') {
+                await this.executeZhiheng(playerIdx);
+                await this.delay(800);
+                continue;
+            }
+            if (action.action === 'skill_lijian') {
+                await this.executeLijian(playerIdx);
+                await this.delay(800);
+                continue;
+            }
+            if (action.action === 'skill_fanjian') {
+                await this.executeFanjian(playerIdx);
+                await this.delay(800);
+                continue;
+            }
             if (action.action === 'play_wusheng') {
                 await this.executeWuSheng(playerIdx, action.card, action.target);
                 await this.delay(800);
                 continue;
             }
             if (action.action === 'play') {
-                await this.executeCardPlay(playerIdx, action.card, action.target);
+                await this.executeCardPlay(playerIdx, action.card, action.target, action.playAs);
                 await this.delay(800);
                 continue;
             }
@@ -463,7 +489,7 @@ const MultiGame = {
     },
 
     // ===== 玩家出牌入口 =====
-    onPlayerCardClick(card) {
+    async onPlayerCardClick(card) {
         if (this.gameOver) return;
         if (this.responseResolver) { this.handleResponseCardClick(card); return; }
         if (this.ganglieDiscard) {
@@ -477,6 +503,61 @@ const MultiGame = {
             return;
         }
         if (this.discardMode) { this.handleDiscardClick(card); return; }
+        // 制衡模式
+        if (this.zhihengMode) {
+            const idx = this.zhihengCards.findIndex(c => c.id === card.id);
+            if (idx >= 0) { this.zhihengCards.splice(idx, 1); }
+            else { this.zhihengCards.push(card); }
+            this.render();
+            return;
+        }
+        // 离间模式
+        if (this.lijianMode) {
+            const player = this.players[0];
+            player.hand = player.hand.filter(c => c.id !== card.id);
+            this.discardPile.push(card);
+            this.log(`你弃置了【${card.name}】发动【离间】`, 'player');
+            this.render();
+            if (this.lijianResolver) {
+                const r = this.lijianResolver; this.lijianResolver = null;
+                // 简化：选择第一个存活的对手作为决斗目标
+                const targetIdx = this.players.findIndex((p, i) => i !== 0 && !p.dead);
+                if (targetIdx >= 0) this.resolveJuedou(0, targetIdx, null);
+                r();
+            }
+            return;
+        }
+        // 反间模式：选择一张牌给对手
+        if (this.fanjianMode) {
+            const player = this.players[0];
+            player.hand = player.hand.filter(c => c.id !== card.id);
+            // 选择目标
+            const targetIdx = await this.askPlayerSelectTarget('选择反间的目标', 0);
+            if (targetIdx === -1) {
+                // 取消，牌返回
+                player.hand.push(card);
+                this.fanjianMode = false;
+                if (this.fanjianResolver) { const r = this.fanjianResolver; this.fanjianResolver = null; r(); }
+                this.render();
+                return;
+            }
+            this.log(`你发动【反间】，将【${card.name}】交给${this.players[targetIdx].hero.name}`, 'player');
+            this.render();
+            if (this.fanjianResolver) {
+                const r = this.fanjianResolver;
+                this.fanjianResolver = null;
+                // AI决定是否使用
+                const aiChoice = MultiAI.decideFanjianResponse(this, targetIdx, card);
+                if (aiChoice === 'use') {
+                    this.log(`${this.players[targetIdx].hero.name}选择使用【${card.name}】`, 'ai');
+                    this.resolveFanjianCard(targetIdx, 0, card).then(() => r());
+                } else {
+                    this.log(`${this.players[targetIdx].hero.name}选择受到1点伤害`, 'ai');
+                    this.dealDamage(targetIdx, 0, null).then(() => r());
+                }
+            }
+            return;
+        }
         if (this.processing) return;
         if (this.currentPlayer !== 0) return;
 
@@ -507,6 +588,18 @@ const MultiGame = {
         }
         if (hasSkill(player.hero, '仁德') && card.defKey !== 'tao') {
             if (player.hp < player.maxHp) results.push({ as: 'tao', skill: '仁德' });
+        }
+        // 奇袭（甘宁）：黑色手牌当过河拆桥
+        if (hasSkill(player.hero, '奇袭') && !card.isRed && card.defKey !== 'guohechaiqiao') {
+            results.push({ as: 'guohechaiqiao', skill: '奇袭' });
+        }
+        // 国色（大乔）：方块牌当乐不思蜀
+        if (hasSkill(player.hero, '国色') && card.suit === SUIT.DIAMOND && card.defKey !== 'lebusishu') {
+            results.push({ as: 'lebusishu', skill: '国色' });
+        }
+        // 双雄（颜良文丑）：黑色手牌当决斗
+        if (hasSkill(player.hero, '双雄') && !card.isRed && card.defKey !== 'juedou') {
+            results.push({ as: 'juedou', skill: '双雄' });
         }
         return results;
     },
@@ -552,6 +645,14 @@ const MultiGame = {
         player.hand = player.hand.filter(c => c.id !== card.id);
         this.discardPile.push(card);
 
+        // 集智（黄月英）：使用非转化的普通锦囊牌时摸一张牌
+        if (!playAs.skill && card.type === 'trick' && hasSkill(player.hero, '集智')) {
+            const drawnCard = this.drawCard();
+            player.hand.push(drawnCard);
+            this.log(`你发动【集智】，摸了1张牌`, 'player');
+            this.sayHeroLine(0, 'skill');
+        }
+
         if (playAs.skill) {
             this.log(`你发动【${playAs.skill}】，将【${card.name}】当【${CARD_DEFS[playAs.as].name}】使用`, 'player');
         } else {
@@ -559,6 +660,9 @@ const MultiGame = {
         }
 
         await this.executeCardEffect(0, targetIdx, card, playAs.as, effectiveCard);
+        
+        // 连营（陆逊）：失去最后的手牌时摸一张牌
+        this.checkLianying(0);
     },
 
     // ===== 工具方法 =====
@@ -581,6 +685,14 @@ const MultiGame = {
         const slot = card.equipType === EQUIP_TYPE.WEAPON ? 'weapon' : card.equipType === EQUIP_TYPE.ARMOR ? 'armor' : 'mount';
         if (player.equipment[slot]) {
             this.discardPile.push(player.equipment[slot]);
+            // 枭姬（孙尚香）：失去装备后摸两张牌
+            if (hasSkill(player.hero, '枭姬')) {
+                const c1 = this.drawCard();
+                const c2 = this.drawCard();
+                player.hand.push(c1, c2);
+                this.log(`${player.hero.name}发动【枭姬】，摸了2张牌`, playerIdx === 0 ? 'player' : 'ai');
+                this.sayHeroLine(playerIdx, 'skill');
+            }
         }
         player.equipment[slot] = card;
     },
@@ -738,6 +850,8 @@ const MultiGame = {
         this.responseMode = null;
         this.discardMode = false;
         this.ganglieDiscard = false;
+        this.fanjianMode = false;
+        this.fanjianResolver = null;
         this.processing = false;
         this.stopBGM();
         document.querySelectorAll('.hero-card').forEach(c => c.classList.remove('selected'));

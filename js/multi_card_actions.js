@@ -3,16 +3,34 @@
 
 Object.assign(MultiGame, {
     // ===== AI出牌执行 =====
-    async executeCardPlay(sourceIdx, card, targetIdx) {
+    async executeCardPlay(sourceIdx, card, targetIdx, playAs) {
         const source = this.players[sourceIdx];
         source.hand = source.hand.filter(c => c.id !== card.id);
         this.discardPile.push(card);
 
-        switch (card.defKey) {
+        // 集智（黄月英）：使用非转化的普通锦囊牌时摸一张牌
+        if (!playAs && card.type === 'trick' && hasSkill(source.hero, '集智')) {
+            const drawnCard = this.drawCard();
+            source.hand.push(drawnCard);
+            this.log(`${source.hero.name}发动【集智】，摸了1张牌`, sourceIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(sourceIdx, 'skill');
+        }
+
+        const effectiveDefKey = playAs ? playAs.as : card.defKey;
+        const effectiveCard = playAs ? { ...card, defKey: playAs.as, name: CARD_DEFS[playAs.as].name } : card;
+
+        if (playAs) {
+            this.log(`${source.hero.name}发动【${playAs.skill}】，将【${card.name}】当【${CARD_DEFS[playAs.as].name}】使用`, sourceIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(sourceIdx, 'skill');
+        } else {
+            this.log(`${source.hero.name}使用【${card.name}】`, sourceIdx === 0 ? 'player' : 'ai');
+        }
+
+        switch (effectiveDefKey) {
             case 'sha':
                 this.hasSlashedThisTurn = true;
                 this.sayHeroLine(sourceIdx, 'attack');
-                await this.resolveSha(sourceIdx, targetIdx, card);
+                await this.resolveSha(sourceIdx, targetIdx, effectiveCard);
                 break;
             case 'tao':
                 this.heal(sourceIdx, 1);
@@ -33,7 +51,7 @@ Object.assign(MultiGame, {
                 await this.resolveShunshou(sourceIdx, targetIdx);
                 break;
             case 'juedou':
-                await this.resolveJuedou(sourceIdx, targetIdx, card);
+                await this.resolveJuedou(sourceIdx, targetIdx, effectiveCard);
                 break;
             case 'nanmanruqin':
                 await this.resolveNanman(sourceIdx);
@@ -62,6 +80,9 @@ Object.assign(MultiGame, {
                 }
                 break;
         }
+
+        // 连营（陆逊）：失去最后的手牌时摸一张牌
+        this.checkLianying(sourceIdx);
     },
 
     // 玩家使用卡牌的效果执行（非杀/非武圣）
@@ -149,6 +170,168 @@ Object.assign(MultiGame, {
         if (player.hp <= 0) await this.checkDying(playerIdx, -1, null);
     },
 
+    // 制衡（孙权）：弃置任意张牌，然后摸等量的牌
+    async executeZhiheng(playerIdx) {
+        const player = this.players[playerIdx];
+        this.hasUsedZhihengThisTurn = true;
+        this.sayHeroLine(playerIdx, 'skill');
+        if (player.isAI) {
+            const discardCount = Math.min(player.hand.length, Math.max(1, player.hand.length - player.hp));
+            const toDiscard = MultiAI.chooseDiscard(this, playerIdx, discardCount);
+            toDiscard.forEach(c => {
+                player.hand = player.hand.filter(h => h.id !== c.id);
+                this.discardPile.push(c);
+            });
+            this.log(`${player.hero.name}发动【制衡】，弃了${discardCount}张牌`, 'ai');
+            for (let i = 0; i < discardCount; i++) player.hand.push(this.drawCard());
+            this.log(`${player.hero.name}摸了${discardCount}张牌`, 'ai');
+            this.render();
+        } else {
+            this.log(`请选择要弃置的牌（制衡）`, 'system');
+            this.zhihengMode = true;
+            this.zhihengCards = [];
+            this.render();
+            await new Promise(resolve => { this.zhihengResolver = resolve; });
+            this.zhihengMode = false;
+        }
+    },
+
+    // 离间（貂蝉）：弃一张牌，令两名男性角色进行决斗
+    async executeLijian(playerIdx) {
+        const player = this.players[playerIdx];
+        this.hasUsedLijianThisTurn = true;
+        this.sayHeroLine(playerIdx, 'skill');
+        if (player.isAI) {
+            const discardCard = player.hand[0];
+            player.hand = player.hand.filter(c => c.id !== discardCard.id);
+            this.discardPile.push(discardCard);
+            this.log(`${player.hero.name}发动【离间】，弃置一张牌`, 'ai');
+            const targetIdx = this.players.findIndex((p, i) => i !== playerIdx && !p.dead);
+            if (targetIdx >= 0) this.resolveJuedou(playerIdx, targetIdx, null);
+        } else {
+            this.log(`请选择一张手牌弃置（离间）`, 'system');
+            this.lijianMode = true;
+            this.render();
+            await new Promise(resolve => { this.lijianResolver = resolve; });
+            this.lijianMode = false;
+        }
+    },
+
+    // 反间（周瑜）：将一张手牌交给对手，对手选择使用或受伤害
+    async executeFanjian(playerIdx) {
+        const player = this.players[playerIdx];
+        this.hasUsedFanjianThisTurn = true;
+        this.sayHeroLine(playerIdx, 'skill');
+        if (player.isAI) {
+            // AI选择一张较弱的牌
+            const card = MultiAI.chooseFanjianCard(this, playerIdx);
+            if (!card) return;
+            player.hand = player.hand.filter(c => c.id !== card.id);
+            // AI选择目标（第一个存活的人类玩家或随机对手）
+            const targetIdx = this.players.findIndex((p, i) => i !== playerIdx && !p.dead);
+            if (targetIdx < 0) return;
+            this.log(`${player.hero.name}发动【反间】，将【${card.name}】交给${this.players[targetIdx].hero.name}`, playerIdx === 0 ? 'player' : 'ai');
+            this.render();
+            await this.delay(800);
+            if (targetIdx === 0) {
+                // 询问玩家选择
+                const choice = await this.askPlayerFanjianChoice(card);
+                if (choice === 'use') {
+                    this.log(`你选择使用【${card.name}】`, 'player');
+                    await this.resolveFanjianCard(0, playerIdx, card);
+                } else {
+                    this.log(`你选择受到1点伤害`, 'player');
+                    await this.dealDamage(0, playerIdx, null);
+                }
+            } else {
+                // AI目标自动决策
+                const aiChoice = MultiAI.decideFanjianResponse(this, targetIdx, card);
+                if (aiChoice === 'use') {
+                    this.log(`${this.players[targetIdx].hero.name}选择使用【${card.name}】`, 'ai');
+                    await this.resolveFanjianCard(targetIdx, playerIdx, card);
+                } else {
+                    this.log(`${this.players[targetIdx].hero.name}选择受到1点伤害`, 'ai');
+                    await this.dealDamage(targetIdx, playerIdx, null);
+                }
+            }
+        } else {
+            // 玩家进入反间选牌模式
+            this.log(`请选择一张手牌发动【反间】`, 'system');
+            this.fanjianMode = true;
+            this.render();
+            await new Promise(resolve => { this.fanjianResolver = resolve; });
+            this.fanjianMode = false;
+        }
+    },
+
+    // 反间牌使用结算
+    async resolveFanjianCard(targetIdx, sourceIdx, card) {
+        const target = this.players[targetIdx];
+        if (card.defKey === 'sha') {
+            this.log(`${target.hero.name}对${this.players[sourceIdx].hero.name}使用【杀】`, targetIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(targetIdx, 'attack');
+            this.render();
+            await this.resolveSha(targetIdx, sourceIdx, { ...card, defKey: 'sha', name: '杀' });
+        } else if (card.defKey === 'tao') {
+            if (target.hp < target.maxHp) {
+                this.heal(targetIdx, 1);
+                this.log(`${target.hero.name}使用【桃】回复1点体力`, targetIdx === 0 ? 'player' : 'ai');
+                this.sayHeroLine(targetIdx, 'heal');
+            } else {
+                this.log(`${target.hero.name}体力已满，【桃】无效`, 'system');
+            }
+            this.render();
+        } else if (card.type === 'trick') {
+            this.log(`${target.hero.name}无法使用【${card.name}】，受到1点伤害`, 'system');
+            this.discardPile.push(card);
+            await this.dealDamage(targetIdx, sourceIdx, null);
+        } else {
+            this.log(`${target.hero.name}无法使用【${card.name}】，受到1点伤害`, 'system');
+            this.discardPile.push(card);
+            await this.dealDamage(targetIdx, sourceIdx, null);
+        }
+    },
+
+    // ===== 检查杀是否不可闪避 =====
+    async checkShaUnblockable(sourceIdx, targetIdx, card) {
+        const source = this.players[sourceIdx];
+        const target = this.players[targetIdx];
+
+        // 铁骑（马超）：判定，红色则不可闪避
+        if (hasSkill(source.hero, '铁骑')) {
+            this.log(`${source.hero.name}发动【铁骑】`, sourceIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(sourceIdx, 'skill');
+            this.render();
+            await this.delay(800);
+            const judgeCard = this.drawCard();
+            this.discardPile.push(judgeCard);
+            this.log(`判定结果：${judgeCard.suit}${judgeCard.number}（${judgeCard.isRed ? '红色' : '黑色'}）`, 'system');
+            this.render();
+            await this.delay(600);
+            if (judgeCard.isRed) {
+                this.log(`判定为红色，【铁骑】生效，此杀不可闪避！`, 'system');
+                this.render();
+                await this.delay(400);
+                return true;
+            } else {
+                this.log(`判定为黑色，【铁骑】失效`, 'system');
+                this.render();
+                await this.delay(400);
+            }
+        }
+
+        // 烈弓（黄忠）：目标手牌数>=体力值则不可闪避
+        if (hasSkill(source.hero, '烈弓') && target.hand.length >= target.hp) {
+            this.log(`${source.hero.name}发动【烈弓】，目标手牌数≥体力值，此杀不可闪避！`, 'system');
+            this.sayHeroLine(sourceIdx, 'skill');
+            this.render();
+            await this.delay(600);
+            return true;
+        }
+
+        return false;
+    },
+
     // ===== 杀的结算 =====
     async resolveSha(sourceIdx, targetIdx, card) {
         const source = this.players[sourceIdx];
@@ -166,18 +349,48 @@ Object.assign(MultiGame, {
         let needShan = 1;
         if (hasSkill(source.hero, '无双')) needShan = 2;
 
-        // 八卦阵
-        if (target.equipment.armor && target.equipment.armor.defKey === 'baguazhen') {
-            const judgeCard = this.drawCard();
-            this.discardPile.push(judgeCard);
-            this.log(`${target.hero.name}八卦阵判定：${judgeCard.suit}${judgeCard.number}`, 'system');
-            if (judgeCard.isRed) { this.log(`判定红色，八卦阵生效！`, 'system'); this.render(); return; }
-            else this.log(`判定黑色，八卦阵失效`, 'system');
+        // 突袭（张辽）：无视防具
+        if (!hasSkill(source.hero, '突袭')) {
+            // 八卦阵
+            if (target.equipment.armor && target.equipment.armor.defKey === 'baguazhen') {
+                const judgeCard = this.drawCard();
+                this.discardPile.push(judgeCard);
+                this.log(`${target.hero.name}八卦阵判定：${judgeCard.suit}${judgeCard.number}`, 'system');
+                if (judgeCard.isRed) { this.log(`判定红色，八卦阵生效！`, 'system'); this.render(); return; }
+                else this.log(`判定黑色，八卦阵失效`, 'system');
+            }
+            // 仁王盾
+            if (target.equipment.armor && target.equipment.armor.defKey === 'renwangdun' && !card.isRed) {
+                this.log(`${target.hero.name}装备【仁王盾】，黑色杀无效`, 'system');
+                this.render();
+                return;
+            }
+        } else {
+            this.log(`${source.hero.name}发动【突袭】，无视防具`, sourceIdx === 0 ? 'player' : 'ai');
         }
 
-        // 仁王盾
-        if (target.equipment.armor && target.equipment.armor.defKey === 'renwangdun' && !card.isRed) {
-            this.log(`${target.hero.name}装备【仁王盾】，黑色杀无效`, 'system');
+        // 检查不可闪避（铁骑、烈弓）
+        const unblockable = await this.checkShaUnblockable(sourceIdx, targetIdx, card);
+
+        // 裸衣（许褚）：不能使用闪
+        if (hasSkill(target.hero, '裸衣')) {
+            this.log(`${target.hero.name}【裸衣】生效，不能使用【闪】`, 'system');
+            this.render();
+            await this.delay(600);
+            this.log(`${target.hero.name}没有出闪`, targetIdx === 0 ? 'player' : 'ai');
+            await this.dealDamage(targetIdx, sourceIdx, card);
+            if (!this.responseResolver && !this.gameOver && this.currentPlayer === 0) this.processing = false;
+            this.render();
+            return;
+        }
+
+        if (unblockable) {
+            this.log(`此杀不可闪避！`, 'system');
+            this.render();
+            await this.delay(600);
+            this.log(`${target.hero.name}没有出闪`, targetIdx === 0 ? 'player' : 'ai');
+            await this.dealDamage(targetIdx, sourceIdx, card);
+            if (!this.responseResolver && !this.gameOver && this.currentPlayer === 0) this.processing = false;
             this.render();
             return;
         }
@@ -280,8 +493,10 @@ Object.assign(MultiGame, {
             if (response.play) {
                 target.hand = target.hand.filter(c => c.id !== response.card.id);
                 this.discardPile.push(response.card);
-                this.log(`${target.hero.name}出【杀】抵挡`, targetIdx === 0 ? 'player' : 'ai');
-                this.sayHeroLine(targetIdx, 'dodge');
+                const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
+                this.log(`${target.hero.name}出【杀】${skillText}抵挡`, targetIdx === 0 ? 'player' : 'ai');
+                if (response.card.defKey === 'shan') this.sayHeroLine(targetIdx, 'skill');
+                else this.sayHeroLine(targetIdx, 'dodge');
                 this.render();
             } else {
                 this.log(`${target.hero.name}没有出杀，受到1点伤害`, targetIdx === 0 ? 'player' : 'ai');
@@ -422,6 +637,90 @@ Object.assign(MultiGame, {
         }
     },
 
+    // ===== 洛神技能（甄姬）- 回合开始阶段进行判定 =====
+    async processLuoshen(playerIdx) {
+        const player = this.players[playerIdx];
+        if (!hasSkill(player.hero, '洛神')) return;
+
+        this.log(`${player.hero.name}发动【洛神】`, playerIdx === 0 ? 'player' : 'ai');
+        this.sayHeroLine(playerIdx, 'skill');
+        this.render();
+        await this.delay(800);
+
+        let continueLuoshen = true;
+        while (continueLuoshen) {
+            const judgeCard = this.drawCard();
+            if (!judgeCard) break; // 牌堆为空
+
+            this.log(`判定结果：${judgeCard.suit}${judgeCard.number}（${judgeCard.isRed ? '红色' : '黑色'}）`, 'system');
+            this.render();
+            await this.delay(800);
+
+            if (!judgeCard.isRed) {
+                // 黑色：获得此牌，可以继续
+                player.hand.push(judgeCard);
+                this.log(`${player.hero.name}获得【${judgeCard.name}】（${judgeCard.suit}${judgeCard.number}）`, playerIdx === 0 ? 'player' : 'ai');
+                this.render();
+                await this.delay(600);
+
+                // 玩家选择是否继续
+                if (playerIdx === 0 && !player.isAI) {
+                    continueLuoshen = await this.askLuoshenContinue();
+                } else {
+                    // AI总是继续
+                    continueLuoshen = true;
+                }
+            } else {
+                // 红色：弃置此牌，洛神结束
+                this.discardPile.push(judgeCard);
+                this.log(`判定为红色，【${judgeCard.name}】进入弃牌堆，洛神结束`, 'system');
+                this.render();
+                await this.delay(600);
+                continueLuoshen = false;
+            }
+        }
+    },
+
+    // 询问玩家是否继续洛神
+    askLuoshenContinue() {
+        return new Promise((resolve) => {
+            this.responseMode = 'luoshen';
+            this.responseResolver = resolve;
+
+            document.getElementById('response-prompt').textContent = '是否继续发动【洛神】？';
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+
+            const btn1 = document.createElement('button');
+            btn1.className = 'action-btn green';
+            btn1.textContent = '继续洛神';
+            btn1.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r(true);
+            });
+            container.appendChild(btn1);
+
+            const btn2 = document.createElement('button');
+            btn2.className = 'action-btn';
+            btn2.textContent = '停止洛神';
+            btn2.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r(false);
+            });
+            container.appendChild(btn2);
+
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
     // ===== 火攻 =====
     async resolveHuogong(sourceIdx, targetIdx) {
         const source = this.players[sourceIdx];
@@ -471,8 +770,44 @@ Object.assign(MultiGame, {
     async dealDamage(targetIdx, sourceIdx, card) {
         const target = this.players[targetIdx];
         if (target.dead) return;
-        target.hp -= 1;
-        this.log(`${target.hero.name}受到1点伤害（${target.hp}/${target.maxHp}）`, 'damage');
+
+        // 天香（小乔）：受到伤害时可以弃置一张红桃手牌将伤害转移
+        if (hasSkill(target.hero, '天香') && sourceIdx >= 0) {
+            const heartCard = target.hand.find(c => c.suit === SUIT.HEART);
+            if (heartCard) {
+                let useTianxiang = false;
+                if (target.isAI) {
+                    if (target.hp <= 2) useTianxiang = true;
+                } else {
+                    const choice = await this.askPlayerTianxiang();
+                    useTianxiang = choice;
+                }
+                if (useTianxiang) {
+                    target.hand = target.hand.filter(c => c.id !== heartCard.id);
+                    this.discardPile.push(heartCard);
+                    this.log(`${target.hero.name}发动【天香】，弃置【${heartCard.name}】，将伤害转移给${this.players[sourceIdx].hero.name}`, targetIdx === 0 ? 'player' : 'ai');
+                    this.sayHeroLine(targetIdx, 'skill');
+                    this.render();
+                    await this.delay(500);
+                    await this.dealDamage(sourceIdx, -1, null);
+                    return;
+                }
+            }
+        }
+
+        let damageAmount = 1;
+        
+        // 裸衣（许褚）：杀伤害+1
+        if (sourceIdx >= 0) {
+            const source = this.players[sourceIdx];
+            if (hasSkill(source.hero, '裸衣') && card && card.defKey === 'sha') {
+                damageAmount = 2;
+                this.log(`${source.hero.name}【裸衣】生效，伤害+1`, sourceIdx === 0 ? 'player' : 'ai');
+            }
+        }
+        
+        target.hp -= damageAmount;
+        this.log(`${target.hero.name}受到${damageAmount}点伤害（${target.hp}/${target.maxHp}）`, 'damage');
         this.sayHeroLine(targetIdx, 'damage');
         this.flashDamage(targetIdx);
 
@@ -530,6 +865,47 @@ Object.assign(MultiGame, {
         if (hasSkill(target.hero, '刚烈') && sourceIdx >= 0) {
             await this.triggerGanglie(targetIdx, sourceIdx);
         }
+
+        // 狂骨（魏延）：对距离1以内的目标造成伤害后回复1点
+        if (sourceIdx >= 0 && hasSkill(this.players[sourceIdx].hero, '狂骨')) {
+            const source = this.players[sourceIdx];
+            if (source.hp < source.maxHp && !source.dead) {
+                this.heal(sourceIdx, 1);
+                this.log(`${source.hero.name}发动【狂骨】，回复1点体力`, sourceIdx === 0 ? 'player' : 'ai');
+                this.sayHeroLine(sourceIdx, 'heal');
+                this.render();
+            }
+        }
+
+        // 遗计（郭嘉）：受到伤害后摸两张牌
+        if (hasSkill(target.hero, '遗计')) {
+            const drawnCards = [];
+            for (let i = 0; i < 2; i++) drawnCards.push(this.drawCard());
+            this.log(`${target.hero.name}发动【遗计】，摸了2张牌`, targetIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(targetIdx, 'skill');
+            target.hand.push(...drawnCards);
+            this.render();
+        }
+
+        // 驱虎（荀彧）：受到伤害后令来源受到1点伤害
+        if (hasSkill(target.hero, '驱虎') && sourceIdx >= 0) {
+            this.log(`${target.hero.name}发动【驱虎】`, targetIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(targetIdx, 'skill');
+            this.render();
+            await this.dealDamage(sourceIdx, targetIdx, null);
+        }
+    },
+
+    // 连营（陆逊）：失去最后的手牌时摸一张牌
+    checkLianying(playerIdx) {
+        const player = this.players[playerIdx];
+        if (hasSkill(player.hero, '连营') && player.hand.length === 0) {
+            const card = this.drawCard();
+            player.hand.push(card);
+            this.log(`${player.hero.name}发动【连营】，摸了1张牌`, playerIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(playerIdx, 'skill');
+            this.render();
+        }
     },
 
     async triggerGanglie(targetIdx, sourceIdx) {
@@ -572,6 +948,12 @@ Object.assign(MultiGame, {
         const player = this.players[playerIdx];
         this.log(`${player.hero.name}濒死！`, 'system');
         this.sayHeroLine(playerIdx, 'dying');
+
+        // 完杀（贾诩）：回合内濒死角色只能自救
+        const wanshaActive = this.players[this.currentPlayer] && hasSkill(this.players[this.currentPlayer].hero, '完杀');
+        if (wanshaActive && playerIdx !== this.currentPlayer) {
+            this.log(`${this.players[this.currentPlayer].hero.name}【完杀】生效，其他角色不能提供【桃】`, 'system');
+        }
 
         // 先询问所有存活玩家是否出桃救人（简化：只询问濒死者自己和人类玩家）
         let saved = false;

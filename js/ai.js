@@ -28,6 +28,31 @@ const AI = {
             }
         }
 
+        // 优先级2.5: 制衡技能（孙权）
+        if (hasSkill(ai.hero, '制衡') && !game.hasUsedZhihengThisTurn && ai.hand.length > 0) {
+            // 手牌多且没有杀时制衡
+            const hasSha = ai.hand.some(c => c.defKey === 'sha');
+            const hasShan = ai.hand.some(c => c.defKey === 'shan');
+            if ((!hasSha || !hasShan) && Math.random() < 0.5) {
+                return { action: 'skill_zhiheng' };
+            }
+        }
+
+        // 优先级2.6: 离间技能（貂蝉）
+        if (hasSkill(ai.hero, '离间') && !game.hasUsedLijianThisTurn && ai.hand.length > 1) {
+            const shaCount = ai.hand.filter(c => c.defKey === 'sha').length;
+            if (shaCount >= 1 && Math.random() < 0.4) {
+                return { action: 'skill_lijian' };
+            }
+        }
+
+        // 优先级2.7: 反间技能（周瑜）
+        if (hasSkill(ai.hero, '反间') && !game.hasUsedFanjianThisTurn && ai.hand.length > 1) {
+            if (Math.random() < 0.4) {
+                return { action: 'skill_fanjian' };
+            }
+        }
+
         // 优先级3: 装备
         const equip = this.findEquipCard(ai.hand);
         if (equip && !this.hasEquipType(ai, equip.equipType)) {
@@ -50,12 +75,26 @@ const AI = {
             if (guohe) {
                 return { action: 'play', card: guohe, target: 0 };
             }
+            // 奇袭（甘宁）：黑色牌当过河拆桥
+            if (hasSkill(ai.hero, '奇袭')) {
+                const blackCard = ai.hand.find(c => !c.isRed && c.defKey !== 'guohechaiqiao' && c.defKey !== 'sha' && c.defKey !== 'shan');
+                if (blackCard) {
+                    return { action: 'play', card: blackCard, target: 0, playAs: { as: 'guohechaiqiao', skill: '奇袭' } };
+                }
+            }
         }
 
         // 优先级5.5: 乐不思蜀（控制对方）
         const lebusishu = this.findCard(ai.hand, 'lebusishu');
         if (lebusishu) {
             return { action: 'play', card: lebusishu, target: 0 };
+        }
+        // 国色（大乔）：方块牌当乐不思蜀
+        if (hasSkill(ai.hero, '国色')) {
+            const diamondCard = ai.hand.find(c => c.suit === '♦' && c.defKey !== 'lebusishu' && c.defKey !== 'sha' && c.defKey !== 'shan');
+            if (diamondCard) {
+                return { action: 'play', card: diamondCard, target: 0, playAs: { as: 'lebusishu', skill: '国色' } };
+            }
         }
 
         // 优先级5.6: 火攻（直接伤害）
@@ -100,6 +139,16 @@ const AI = {
                 }
             }
         }
+        // 双雄（颜良文丑）：黑色牌当决斗
+        if (hasSkill(ai.hero, '双雄')) {
+            const blackCard = ai.hand.find(c => !c.isRed && c.defKey !== 'juedou' && c.defKey !== 'sha' && c.defKey !== 'shan');
+            if (blackCard) {
+                const shaCount = ai.hand.filter(c => c.defKey === 'sha').length;
+                if (shaCount >= 1 && !(hasSkill(player.hero, '空城') && player.hand.length === 0)) {
+                    return { action: 'play', card: blackCard, target: 0, playAs: { as: 'juedou', skill: '双雄' } };
+                }
+            }
+        }
 
         // 优先级8: 出杀
         if (!game.hasSlashedThisTurn || this.canSlashUnlimited(ai)) {
@@ -137,6 +186,11 @@ const AI = {
     decideDodge(game, needCount) {
         const ai = game.players[1];
         const player = game.players[0];
+        
+        // 裸衣（许褚）：不能使用闪
+        if (hasSkill(ai.hero, '裸衣')) {
+            return { dodge: false, cards: [] };
+        }
         
         // 赵云龙胆：闪当杀，杀当闪
         const availableShans = ai.hand.filter(c => c.defKey === 'shan');
@@ -181,18 +235,21 @@ const AI = {
     decideNanmanDodge(game) {
         const ai = game.players[1];
         const shas = ai.hand.filter(c => c.defKey === 'sha');
-        
-        if (shas.length === 0) return { dodge: false, card: null };
-        
+        // 龙胆：闪当杀
+        const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
+        const allShas = [...shas, ...longdanShans];
+
+        if (allShas.length === 0) return { dodge: false, card: null };
+
         // HP低时一定要出杀
-        if (ai.hp <= 2) return { dodge: true, card: shas[0] };
-        
+        if (ai.hp <= 2) return { dodge: true, card: allShas[0] };
+
         // 手牌多时倾向出杀
-        if (ai.hand.length > 4) return { dodge: true, card: shas[0] };
-        
+        if (ai.hand.length > 4) return { dodge: true, card: allShas[0] };
+
         // 随机
-        if (Math.random() < 0.5) return { dodge: true, card: shas[0] };
-        
+        if (Math.random() < 0.5) return { dodge: true, card: allShas[0] };
+
         return { dodge: false, card: null };
     },
 
@@ -258,6 +315,12 @@ const AI = {
             return { use: true, card: uselessCard, asSkill: true };
         }
         
+        // 华佗急救：红色牌当桃
+        if (hasSkill(ai.hero, '急救')) {
+            const redCard = ai.hand.find(c => c.isRed && c.defKey !== 'tao');
+            if (redCard) return { use: true, card: redCard, asSkill: true };
+        }
+        
         return { use: false, card: null };
     },
 
@@ -319,6 +382,52 @@ const AI = {
             return (priority[a.defKey] || 99) - (priority[b.defKey] || 99);
         });
         return sorted.slice(0, count);
+    },
+
+    /**
+     * AI选择反间给出的牌（选最没用的牌）
+     */
+    chooseFanjianCard(game) {
+        const ai = game.players[1];
+        // 优先给装备牌或锦囊牌
+        const equip = ai.hand.find(c => c.type === 'equipment');
+        if (equip) return equip;
+        const trick = ai.hand.find(c => c.type === 'trick' && c.defKey !== 'wushengshengyou');
+        if (trick) return trick;
+        // 其次给杀
+        const sha = ai.hand.find(c => c.defKey === 'sha');
+        if (sha && ai.hand.length > 2) return sha;
+        // 最后给任意牌
+        return ai.hand[0];
+    },
+
+    /**
+     * AI决定是否接受反间的牌
+     */
+    decideFanjianResponse(game, card) {
+        const ai = game.players[1];
+        // 如果血量低且牌可用，选择使用
+        if (ai.hp <= 1 && (card.defKey === 'tao' || card.defKey === 'sha')) {
+            return 'use';
+        }
+        // 如果牌是杀且对方没空城，使用
+        if (card.defKey === 'sha' && ai.hand.filter(c => c.defKey === 'sha').length < 2) {
+            return 'use';
+        }
+        // 如果是桃且需要回血，使用
+        if (card.defKey === 'tao' && ai.hp < ai.maxHp) {
+            return 'use';
+        }
+        // 如果是装备，装备上
+        if (card.type === 'equipment') {
+            return 'use';
+        }
+        // 血量高时承受伤害
+        if (ai.hp > 2) {
+            return 'damage';
+        }
+        // 默认承受伤害
+        return 'damage';
     },
 
     // ===== 辅助方法 =====
