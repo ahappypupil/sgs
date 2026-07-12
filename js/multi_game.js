@@ -29,6 +29,8 @@ const MultiGame = {
     ttsVolume: 0.8,
     _speechQueue: [],
     _speaking: false,
+    logBgColor: 'black',
+    logOpacity: 30,
 
     // ===== 初始化 =====
     init() {
@@ -62,6 +64,7 @@ const MultiGame = {
 
         this.setupAudioControls();
         this.setupSettingsPanel();
+        this.initLogStylePanel();
         const homeBtn = document.getElementById('home-btn');
         if (homeBtn) homeBtn.addEventListener('click', () => { window.location.href = 'index.html'; });
     },
@@ -98,6 +101,71 @@ const MultiGame = {
         const ttsToggle = document.getElementById('tts-toggle');
         if (bgmToggle) { bgmToggle.style.opacity = this.bgmEnabled ? '1' : '0.5'; }
         if (ttsToggle) { ttsToggle.textContent = this.ttsEnabled ? '🔊' : '🔇'; ttsToggle.style.opacity = this.ttsEnabled ? '1' : '0.5'; }
+    },
+
+    initLogStylePanel() {
+        const logStyleToggle = document.getElementById('log-style-toggle');
+        const logStylePanel = document.getElementById('log-style-panel');
+        const logStyleClose = document.getElementById('log-style-close');
+        const logOpacitySlider = document.getElementById('log-opacity-slider');
+        const logOpacityValue = document.getElementById('log-opacity-value');
+
+        if (logStyleToggle) {
+            logStyleToggle.addEventListener('click', () => {
+                logStylePanel.classList.toggle('hidden');
+            });
+        }
+
+        if (logStyleClose) {
+            logStyleClose.addEventListener('click', () => {
+                logStylePanel.classList.add('hidden');
+            });
+        }
+
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', (e) => {
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('selected'));
+                e.target.classList.add('selected');
+                this.logBgColor = e.target.dataset.color;
+                this.updateLogStyle();
+            });
+        });
+
+        const defaultColor = document.querySelector('.color-preset[data-color="black"]');
+        if (defaultColor) defaultColor.classList.add('selected');
+
+        if (logOpacitySlider) {
+            logOpacitySlider.addEventListener('input', (e) => {
+                this.logOpacity = parseInt(e.target.value);
+                if (logOpacityValue) {
+                    logOpacityValue.textContent = this.logOpacity + '%';
+                }
+                this.updateLogStyle();
+            });
+        }
+
+        this.updateLogStyle();
+    },
+
+    updateLogStyle() {
+        const battleLog = document.getElementById('battle-log');
+        if (!battleLog) return;
+
+        battleLog.classList.add('with-bg');
+
+        const colorMap = {
+            'black': '0, 0, 0',
+            'darkblue': '26, 26, 46',
+            'darkgreen': '26, 46, 26',
+            'darkred': '46, 26, 26',
+            'darkpurple': '46, 26, 46'
+        };
+
+        const rgb = colorMap[this.logBgColor] || '0, 0, 0';
+        const opacity = this.logOpacity / 100;
+
+        battleLog.style.setProperty('--log-bg-color', rgb);
+        battleLog.style.setProperty('--log-opacity', opacity);
     },
 
     // ===== 武将选择 =====

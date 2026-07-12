@@ -80,8 +80,37 @@
                     </div>
                 </div>
                 <div class="settings-divider"></div>
+                <div class="settings-item">
+                    <div class="settings-item-label">
+                        <button id="log-style-toggle" class="audio-btn" title="日志样式设置">💬</button>
+                        <span>日志样式</span>
+                    </div>
+                </div>
+                <div class="settings-divider"></div>
                 <button id="home-btn" class="settings-home-btn">🏠 返回首页</button>
             </div>
+        </div>
+
+        <!-- 日志样式设置面板 -->
+        <div id="log-style-panel" class="bg-panel hidden" style="width: 220px;">
+            <div class="bg-panel-header">日志样式</div>
+            <div class="log-style-content" style="padding: 12px;">
+                <div class="log-style-item">
+                    <label>背景颜色</label>
+                    <div class="color-presets">
+                        <div class="color-preset" data-color="black" style="background: #000;"></div>
+                        <div class="color-preset" data-color="darkblue" style="background: #1a1a2e;"></div>
+                        <div class="color-preset" data-color="darkgreen" style="background: #1a2e1a;"></div>
+                        <div class="color-preset" data-color="darkred" style="background: #2e1a1a;"></div>
+                        <div class="color-preset" data-color="darkpurple" style="background: #2e1a2e;"></div>
+                    </div>
+                </div>
+                <div class="log-style-item" style="margin-top: 12px;">
+                    <label>透明度 <span id="log-opacity-value">30%</span></label>
+                    <input type="range" id="log-opacity-slider" min="0" max="100" value="30" class="volume-slider" style="width: 100%; margin-top: 6px;">
+                </div>
+            </div>
+            <button id="log-style-close" class="bg-panel-close">✕</button>
         </div>
 
         <!-- 对手区域（上方排列） -->

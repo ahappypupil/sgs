@@ -172,11 +172,17 @@ const Game = {
                 this.updateLogStyle();
             });
         }
+        
+        // 初始化时应用默认样式
+        this.updateLogStyle();
     },
     
     updateLogStyle() {
         const battleLog = document.getElementById('battle-log');
         if (!battleLog) return;
+        
+        // 确保日志样式立即生效（无需先选择背景图）
+        battleLog.classList.add('with-bg');
         
         // 颜色映射
         const colorMap = {
