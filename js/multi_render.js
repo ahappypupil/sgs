@@ -149,6 +149,14 @@ Object.assign(MultiGame, {
         const player = this.players[0];
         if (!player) return;
 
+        // 手牌较多时启用紧凑模式（手机端）
+        const isMobile = window.innerWidth <= 768;
+        if (isMobile && player.hand.length > 7) {
+            container.classList.add('compact');
+        } else {
+            container.classList.remove('compact');
+        }
+
         player.hand.forEach(card => {
             const playable = this.getCardPlayableAs(0, card);
             const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver;

@@ -724,6 +724,7 @@ body {
     justify-content: center;
     gap: 4px;
     flex-wrap: nowrap;
+    align-items: flex-end;
 }
 
 /* ===== 卡牌样式 ===== */
@@ -790,6 +791,8 @@ body {
     writing-mode: vertical-rl;
     text-orientation: upright;
     letter-spacing: 2px;
+    line-height: 1;
+    overflow: hidden;
 }
 
 .card-type {
@@ -1031,6 +1034,7 @@ body {
     gap: 8px;
     margin-bottom: 12px;
     justify-content: center;
+    flex-wrap: wrap;
 }
 
 /* ===== 技能面板 ===== */
@@ -1563,8 +1567,50 @@ body {
     
     .card {
         width: 60px;
+        min-width: 48px;
         height: 84px;
         font-size: 12px;
+    }
+
+    /* 手牌允许换行 */
+    .hand-cards {
+        flex-wrap: wrap;
+        gap: 3px;
+    }
+
+    /* 紧凑模式：手牌多时显示更小，纯文字风格 */
+    .hand-cards.compact .card {
+        width: 42px;
+        min-width: 42px;
+        height: 56px;
+        padding: 2px 3px;
+        border-width: 1px;
+        border-radius: 4px;
+        font-size: 10px;
+        box-shadow: 1px 1px 3px rgba(0,0,0,0.4);
+    }
+
+    .hand-cards.compact .card .card-suit-number {
+        font-size: 9px;
+        gap: 1px;
+    }
+
+    .hand-cards.compact .card .card-name {
+        font-size: 11px;
+        letter-spacing: 0;
+        line-height: 1;
+    }
+
+    .hand-cards.compact .card .card-type {
+        font-size: 7px;
+    }
+
+    .hand-cards.compact .card:hover {
+        transform: translateY(-8px);
+    }
+
+    .hand-cards.compact .card.selected {
+        transform: translateY(-14px);
     }
     
     /* 战斗日志 */
