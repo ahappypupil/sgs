@@ -28,6 +28,8 @@ const Game = {
     currentBgIndex: -1,  // -1 表示默认背景
     bgList: [],
     lastVoiceTime: 0,
+    _speechQueue: [],
+    _speaking: false,
     
     // ===== 初始化 =====
     init() {
@@ -2494,19 +2496,49 @@ const Game = {
         // 清理文本：去掉特殊符号，让朗读更自然
         let cleanText = text.replace(/【/g, '').replace(/】/g, '').replace(/（/g, ',').replace(/）/g, '').replace(/`/g, '');
         
-        // 取消之前的朗读，避免堆积
-        window.speechSynthesis.cancel();
+        this._enqueueSpeech(cleanText, { rate: 1.1, pitch: 1.0, priority: 0 });
+    },
+    
+    // 语音队列管理
+    _enqueueSpeech(text, opts) {
+        // priority: 0=普通日志, 1=武将台词
+        // 队列上限：普通消息最多排2条，台词不受限
+        if (opts.priority === 0) {
+            // 如果队列中已有2条低优先级消息，丢弃最早的
+            let lowCount = this._speechQueue.filter(i => i.priority === 0).length;
+            if (lowCount >= 2) {
+                let idx = this._speechQueue.findIndex(i => i.priority === 0);
+                if (idx >= 0) this._speechQueue.splice(idx, 1);
+            }
+        } else {
+            // 台词入队时，清掉队列中未读的普通日志
+            this._speechQueue = this._speechQueue.filter(i => i.priority !== 0);
+        }
+        this._speechQueue.push({ text, ...opts });
+        if (!this._speaking) this._processSpeechQueue();
+    },
+    
+    _processSpeechQueue() {
+        if (this._speechQueue.length === 0) {
+            this._speaking = false;
+            return;
+        }
+        this._speaking = true;
+        const item = this._speechQueue.shift();
         
-        const utterance = new SpeechSynthesisUtterance(cleanText);
+        const utterance = new SpeechSynthesisUtterance(item.text);
         utterance.lang = 'zh-CN';
-        utterance.rate = 1.1;
-        utterance.pitch = 1.0;
+        utterance.rate = item.rate || 1.0;
+        utterance.pitch = item.pitch || 1.0;
         utterance.volume = this.ttsVolume;
         
         // 尝试使用中文语音
         const voices = window.speechSynthesis.getVoices();
         const zhVoice = voices.find(v => v.lang.startsWith('zh'));
         if (zhVoice) utterance.voice = zhVoice;
+        
+        utterance.onend = () => { this._processSpeechQueue(); };
+        utterance.onerror = () => { this._processSpeechQueue(); };
         
         window.speechSynthesis.speak(utterance);
     },
@@ -2521,29 +2553,13 @@ const Game = {
         // 显示台词气泡
         this.showSpeechBubble(playerIdx, line);
         
-        // 用TTS朗读台词（优先于普通日志朗读）
+        // 用TTS朗读台词（优先于普通日志朗读，入队不打断当前朗读）
         if (this.ttsEnabled && window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-            const utterance = new SpeechSynthesisUtterance(line);
-            utterance.lang = 'zh-CN';
-            utterance.rate = 1.0;
-            
-            // 根据性别和武将设置音色参数
             const voiceConfig = this.getHeroVoiceConfig(player.hero, playerIdx);
-            utterance.pitch = voiceConfig.pitch;
-            utterance.rate = voiceConfig.rate;
-            
-            utterance.volume = this.ttsVolume;
-            
-            // 尝试选择合适的声音
-            const voices = window.speechSynthesis.getVoices();
-            const voice = this.selectBestVoice(voices, voiceConfig);
-            if (voice) utterance.voice = voice;
-            
-            window.speechSynthesis.speak(utterance);
+            this._enqueueSpeech(line, { rate: voiceConfig.rate, pitch: voiceConfig.pitch, priority: 1 });
         }
         
-        // 标记刚朗读了台词，让后续log不重复朗读（短时间内）
+        // 标记刚朗读了台词，让后续log不重复朗读
         this._heroLineSpoken = true;
         setTimeout(() => { this._heroLineSpoken = false; }, 200);
     },

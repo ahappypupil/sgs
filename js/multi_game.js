@@ -27,6 +27,8 @@ const MultiGame = {
     bgmAudio: null,
     bgmVolume: 0.4,
     ttsVolume: 0.8,
+    _speechQueue: [],
+    _speaking: false,
 
     // ===== 初始化 =====
     init() {
@@ -541,12 +543,38 @@ const MultiGame = {
     speak(text) {
         if (!this.ttsEnabled || !window.speechSynthesis) return;
         let cleanText = text.replace(/【/g, '').replace(/】/g, '').replace(/（/g, ',').replace(/）/g, '').replace(/`/g, '');
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(cleanText);
-        u.lang = 'zh-CN'; u.rate = 1.1; u.pitch = 1.0; u.volume = this.ttsVolume;
+        this._enqueueSpeech(cleanText, { rate: 1.1, pitch: 1.0, priority: 0 });
+    },
+
+    // 语音队列管理
+    _enqueueSpeech(text, opts) {
+        if (opts.priority === 0) {
+            let lowCount = this._speechQueue.filter(i => i.priority === 0).length;
+            if (lowCount >= 2) {
+                let idx = this._speechQueue.findIndex(i => i.priority === 0);
+                if (idx >= 0) this._speechQueue.splice(idx, 1);
+            }
+        } else {
+            this._speechQueue = this._speechQueue.filter(i => i.priority !== 0);
+        }
+        this._speechQueue.push({ text, ...opts });
+        if (!this._speaking) this._processSpeechQueue();
+    },
+
+    _processSpeechQueue() {
+        if (this._speechQueue.length === 0) {
+            this._speaking = false;
+            return;
+        }
+        this._speaking = true;
+        const item = this._speechQueue.shift();
+        const u = new SpeechSynthesisUtterance(item.text);
+        u.lang = 'zh-CN'; u.rate = item.rate || 1.0; u.pitch = item.pitch || 1.0; u.volume = this.ttsVolume;
         const voices = window.speechSynthesis.getVoices();
         const zh = voices.find(v => v.lang.startsWith('zh'));
         if (zh) u.voice = zh;
+        u.onend = () => { this._processSpeechQueue(); };
+        u.onerror = () => { this._processSpeechQueue(); };
         window.speechSynthesis.speak(u);
     },
 
@@ -557,15 +585,9 @@ const MultiGame = {
         if (!line) return;
         this.showSpeechBubble(playerIdx, line);
         if (this.ttsEnabled && window.speechSynthesis) {
-            window.speechSynthesis.cancel();
-            const u = new SpeechSynthesisUtterance(line);
-            u.lang = 'zh-CN'; u.rate = 1.0; u.volume = this.ttsVolume;
             const femaleHeroes = ['黄月英', '孙尚香', '甄姬', '小乔', '貂蝉', '大乔'];
-            if (femaleHeroes.includes(player.hero.name)) u.pitch = 1.2; else u.pitch = 0.95;
-            const voices = window.speechSynthesis.getVoices();
-            const zh = voices.find(v => v.lang.startsWith('zh'));
-            if (zh) u.voice = zh;
-            window.speechSynthesis.speak(u);
+            const isFemale = femaleHeroes.includes(player.hero.name);
+            this._enqueueSpeech(line, { rate: 1.0, pitch: isFemale ? 1.2 : 0.95, priority: 1 });
         }
         this._heroLineSpoken = true;
         setTimeout(() => { this._heroLineSpoken = false; }, 200);
