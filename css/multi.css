@@ -1,0 +1,651 @@
+/* ===== 多人对战样式 ===== */
+
+/* 模式选择界面 */
+#mode-select-screen {
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    overflow-y: auto;
+    padding: 20px;
+}
+
+.multi-mode-select {
+    text-align: center;
+    margin: 10px 0 20px;
+}
+
+.select-info-text {
+    color: #ffd700;
+    font-size: 18px;
+    margin-bottom: 16px;
+    letter-spacing: 2px;
+}
+
+.player-count-options {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.player-count-card {
+    width: 120px;
+    padding: 20px 10px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    text-align: center;
+}
+
+.player-count-card:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 215, 0, 0.4);
+    transform: translateY(-4px);
+}
+
+.player-count-card.selected {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: #ffd700;
+    box-shadow: 0 4px 20px rgba(255, 215, 0, 0.2);
+}
+
+.player-count-num {
+    font-size: 36px;
+    font-weight: bold;
+    color: #ffd700;
+    line-height: 1.2;
+}
+
+.player-count-card.selected .player-count-num {
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+}
+
+.player-count-label {
+    font-size: 14px;
+    color: #aaa;
+    margin-top: 4px;
+}
+
+.select-confirm {
+    display: flex;
+    gap: 16px;
+    justify-content: center;
+    align-items: center;
+}
+
+.back-btn {
+    padding: 12px 32px;
+    font-size: 18px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    color: #ccc;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    cursor: pointer;
+    transition: all 0.3s;
+    font-family: inherit;
+}
+
+.back-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+}
+
+/* ===== 游戏界面布局 ===== */
+#game-screen {
+    flex-direction: column;
+    background: linear-gradient(180deg, #1a3a1a 0%, #0d1f0d 50%, #1a3a1a 100%);
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* 对手区域 */
+.opponents-area {
+    display: flex;
+    gap: 12px;
+    padding: 8px 12px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    min-height: 160px;
+}
+
+.opponent-card {
+    width: 200px;
+    padding: 8px;
+    border-radius: 10px;
+    background: rgba(0, 0, 0, 0.4);
+    border: 2px solid transparent;
+    transition: all 0.3s;
+    position: relative;
+}
+
+.opponent-card.current-turn {
+    border-color: #ffd700;
+    box-shadow: 0 0 16px rgba(255, 215, 0, 0.3);
+}
+
+.opponent-card.dead {
+    opacity: 0.35;
+    filter: grayscale(1);
+}
+
+.opponent-card.targetable {
+    cursor: pointer;
+    border-color: #ff4444;
+    animation: targetPulse 1s ease-in-out infinite;
+}
+
+@keyframes targetPulse {
+    0%, 100% { box-shadow: 0 0 8px rgba(255, 68, 68, 0.4); }
+    50% { box-shadow: 0 0 20px rgba(255, 68, 68, 0.7); }
+}
+
+.opponent-info-bar {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.opponent-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 8px;
+    border: 2px solid;
+    background-size: cover;
+    background-position: center;
+    flex-shrink: 0;
+    position: relative;
+}
+
+.opponent-avatar .faction-badge {
+    position: absolute;
+    bottom: -4px;
+    right: -4px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    font-weight: bold;
+    color: white;
+    border: 1px solid rgba(0, 0, 0, 0.5);
+}
+
+.opponent-details {
+    flex: 1;
+    min-width: 0;
+}
+
+.opponent-name {
+    font-size: 14px;
+    font-weight: bold;
+    color: #ffd700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opponent-title {
+    font-size: 11px;
+    color: #888;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.opponent-hp-bar {
+    display: flex;
+    gap: 2px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.opponent-hp-point {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ff3333;
+    border: 1px solid #880000;
+}
+
+.opponent-hp-point.lost {
+    background: #333;
+    border-color: #222;
+}
+
+.opponent-card-count {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: #aaa;
+    margin-top: 4px;
+}
+
+.opponent-equip {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.opponent-equip-slot {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #888;
+}
+
+.opponent-equip-slot.equipped {
+    background: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
+}
+
+.opponent-status {
+    display: flex;
+    gap: 4px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+}
+
+.opponent-status-tag {
+    font-size: 10px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    background: rgba(139, 69, 19, 0.3);
+    color: #FFD700;
+    border: 1px solid rgba(139, 69, 19, 0.5);
+}
+
+.opponent-hand-preview {
+    display: flex;
+    justify-content: center;
+    gap: 2px;
+    margin-top: 6px;
+    min-height: 28px;
+}
+
+.opponent-hand-preview .card-back {
+    width: 18px;
+    height: 26px;
+    border-radius: 3px;
+    margin-left: -8px;
+}
+
+.opponent-hand-preview .card-back:first-child {
+    margin-left: 0;
+}
+
+/* 中间区域 */
+.center-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    padding: 8px 16px;
+    min-height: 0;
+}
+
+.multi-battle-log {
+    width: 100%;
+    max-width: 600px;
+    max-height: 180px;
+    overflow-y: auto;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.multi-action-bar {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    min-height: 50px;
+    flex-wrap: wrap;
+}
+
+/* 玩家区域 */
+.multi-player-area {
+    padding: 8px 16px;
+    border-top: 1px solid rgba(255, 215, 0, 0.1);
+}
+
+/* 目标选择面板中的玩家按钮 */
+.target-player-btn {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    cursor: pointer;
+    transition: all 0.3s;
+    color: #e0e0e0;
+    font-family: inherit;
+    font-size: 14px;
+    margin: 4px;
+}
+
+.target-player-btn:hover {
+    background: rgba(255, 68, 68, 0.15);
+    border-color: #ff4444;
+    transform: translateY(-2px);
+}
+
+.target-player-btn .target-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid;
+    flex-shrink: 0;
+}
+
+.target-player-btn .target-info {
+    text-align: left;
+}
+
+.target-player-btn .target-name {
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.target-player-btn .target-hp {
+    font-size: 12px;
+    color: #aaa;
+}
+
+/* 游戏结束统计 */
+.gameover-stats {
+    margin: 16px 0;
+    padding: 12px 20px;
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 10px;
+    font-size: 14px;
+    color: #aaa;
+    line-height: 1.8;
+}
+
+.gameover-stats .stat-winner {
+    color: #ffd700;
+    font-weight: bold;
+}
+
+/* 响应面板适配 */
+#response-panel .response-cards,
+#target-panel .response-cards {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+/* 当前玩家指示器 */
+.turn-indicator {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #ffd700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    box-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+    z-index: 10;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+    .opponents-area {
+        gap: 6px;
+        padding: 4px 6px;
+    }
+
+    .opponent-card {
+        width: 150px;
+        padding: 6px;
+    }
+
+    .opponent-avatar {
+        width: 40px;
+        height: 40px;
+    }
+
+    .opponent-name {
+        font-size: 12px;
+    }
+
+    .multi-battle-log {
+        max-height: 120px;
+        font-size: 13px;
+    }
+
+    .player-count-card {
+        width: 80px;
+        padding: 14px 6px;
+    }
+
+    .player-count-num {
+        font-size: 28px;
+    }
+}
+
+/* ===== 设置按钮与面板 ===== */
+.settings-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 2px solid rgba(255, 215, 0, 0.5);
+    background: rgba(0, 0, 0, 0.6);
+    color: #ffd700;
+    font-size: 20px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 101;
+}
+
+.settings-toggle:hover {
+    background: rgba(255, 215, 0, 0.2);
+    transform: rotate(90deg);
+    border-color: #ffd700;
+}
+
+.settings-panel {
+    position: absolute;
+    top: 58px;
+    right: 10px;
+    width: 280px;
+    background: rgba(0, 0, 0, 0.85);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 12px;
+    z-index: 100;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    animation: settingsSlideIn 0.2s ease;
+}
+
+@keyframes settingsSlideIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.settings-panel.hidden {
+    display: none;
+}
+
+.settings-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: rgba(255, 215, 0, 0.1);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.2);
+    font-size: 16px;
+    font-weight: bold;
+    color: #ffd700;
+}
+
+.settings-close {
+    background: none;
+    border: none;
+    color: #888;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0 4px;
+    transition: color 0.2s;
+}
+
+.settings-close:hover {
+    color: #ff4444;
+}
+
+.settings-panel-body {
+    padding: 16px;
+}
+
+.settings-item {
+    margin-bottom: 16px;
+}
+
+.settings-item-label {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 8px;
+    color: #ccc;
+    font-size: 14px;
+}
+
+.settings-item-label .audio-btn {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+    flex-shrink: 0;
+}
+
+.settings-item .volume-slider-container {
+    width: 100%;
+    align-items: center;
+}
+
+.settings-item .volume-slider {
+    width: 100%;
+}
+
+.settings-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+    margin: 12px 0;
+}
+
+.settings-home-btn {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #ccc;
+    font-size: 15px;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-family: inherit;
+}
+
+.settings-home-btn:hover {
+    background: rgba(255, 215, 0, 0.15);
+    border-color: rgba(255, 215, 0, 0.3);
+    color: #ffd700;
+}
+
+/* 移动端设置面板适配 */
+@media screen and (max-width: 768px) {
+    .settings-toggle {
+        top: 6px;
+        right: 6px;
+        width: 34px;
+        height: 34px;
+        font-size: 16px;
+    }
+
+    .settings-panel {
+        top: 48px;
+        right: 6px;
+        width: 250px;
+    }
+}
+
+/* 超窄屏幕（手机竖屏） */
+@media screen and (max-width: 480px) {
+    .opponents-area {
+        gap: 4px;
+        padding: 3px 4px;
+    }
+
+    .opponent-card {
+        width: 130px;
+        padding: 4px;
+    }
+
+    .opponent-avatar {
+        width: 34px;
+        height: 34px;
+    }
+
+    .opponent-name {
+        font-size: 11px;
+    }
+
+    .opponent-title {
+        font-size: 9px;
+    }
+
+    .opponent-hp-point {
+        width: 7px;
+        height: 7px;
+    }
+
+    .opponent-equip-slot {
+        font-size: 9px;
+        padding: 1px 4px;
+    }
+
+    .multi-player-area {
+        padding: 4px 8px;
+    }
+
+    .multi-battle-log {
+        max-height: 100px;
+        font-size: 12px;
+        padding: 6px 10px;
+    }
+
+    .multi-action-bar {
+        gap: 6px;
+    }
+
+    .opponent-hand-preview .card-back {
+        width: 14px;
+        height: 20px;
+        margin-left: -6px;
+    }
+}

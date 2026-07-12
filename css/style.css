@@ -699,6 +699,7 @@ body {
     gap: 4px;
     font-size: 20px;
     color: #ccc;
+    flex-shrink: 0;
 }
 
 .card-count-icon {
@@ -1590,8 +1591,48 @@ body {
     
     /* 装备槽 */
     .equip-slot {
+        width: auto;
+        min-width: 32px;
+        height: auto;
+        padding: 4px 6px;
+        font-size: 10px;
+        border-width: 1px;
+        border-radius: 4px;
+        flex-direction: row;
+        gap: 2px;
+    }
+
+    .equip-area {
+        gap: 4px;
+        flex-wrap: wrap;
+    }
+
+    /* 头像缩小 */
+    .hero-avatar {
+        width: 56px;
+        height: 72px;
+        border-radius: 6px;
+        border-width: 2px;
+    }
+
+    /* 武将详情缩小 */
+    .hero-details {
+        min-width: 0;
+        flex: 1;
+    }
+
+    .hero-name {
+        font-size: 14px;
+    }
+
+    .hero-faction {
         font-size: 11px;
-        padding: 4px 8px;
+    }
+
+    /* 信息栏间距缩小，允许换行 */
+    .player-info-bar {
+        gap: 6px;
+        flex-wrap: wrap;
     }
     
     /* 背景选择面板 */
@@ -1640,6 +1681,69 @@ body {
     
     .hp-text {
         font-size: 11px;
+    }
+
+    /* 武将牌势力标记缩小 */
+    .hero-card-faction-badge {
+        width: 16px;
+        height: 16px;
+        font-size: 9px;
+        border-width: 1px;
+    }
+}
+
+/* 超窄屏幕（手机竖屏） */
+@media screen and (max-width: 480px) {
+    .hero-avatar {
+        width: 44px;
+        height: 58px;
+        border-radius: 5px;
+    }
+
+    .hero-card-faction-badge {
+        width: 14px;
+        height: 14px;
+        font-size: 8px;
+    }
+
+    .hero-name {
+        font-size: 13px;
+    }
+
+    .hero-faction {
+        font-size: 10px;
+    }
+
+    .equip-slot {
+        min-width: 28px;
+        padding: 3px 4px;
+        font-size: 9px;
+    }
+
+    .equip-area {
+        gap: 3px;
+    }
+
+    .player-info-bar {
+        gap: 4px;
+    }
+
+    .card-count {
+        font-size: 16px;
+    }
+
+    .hp-bar {
+        width: 50px;
+        height: 8px;
+    }
+
+    .hp-text {
+        font-size: 10px;
+    }
+
+    .skill-tag {
+        font-size: 9px;
+        padding: 1px 4px;
     }
 }
 

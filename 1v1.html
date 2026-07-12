@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三国杀 · 一对一</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/home.css">
+</head>
+<body>
+    <!-- 武将选择界面 -->
+    <div id="select-screen" class="screen active">
+        <div class="select-header">
+            <h1>三 国 杀</h1>
+            <p class="subtitle">一 对 一 对 战</p>
+        </div>
+        <div class="select-info">
+            <p>请选择你的武将</p>
+        </div>
+        <!-- 势力Tab -->
+        <div id="faction-tabs" class="faction-tabs"></div>
+        <!-- 武将列表 -->
+        <div id="hero-list" class="hero-list"></div>
+        <div class="select-confirm">
+            <button id="confirm-hero" disabled>开始对战</button>
+        </div>
+    </div>
+
+    <!-- 浮动人物简介卡片 -->
+    <div id="hero-profile" class="hero-profile hidden"></div>
+
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="screen">
+        <!-- 右上角设置按钮 -->
+        <button id="settings-toggle" class="settings-toggle" title="设置">⚙️</button>
+
+        <!-- 右上角设置面板（默认隐藏） -->
+        <div id="settings-panel" class="settings-panel hidden">
+            <div class="settings-panel-header">
+                <span>设置</span>
+                <button id="settings-close" class="settings-close">✕</button>
+            </div>
+            <div class="settings-panel-body">
+                <div class="settings-item">
+                    <div class="settings-item-label">
+                        <button id="bgm-toggle" class="audio-btn" title="背景音乐">🎵</button>
+                        <span>背景音乐</span>
+                    </div>
+                    <div class="volume-slider-container">
+                        <input type="range" id="bgm-volume" min="0" max="100" value="40" class="volume-slider">
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-label">
+                        <button id="tts-toggle" class="audio-btn" title="语音朗读">🔊</button>
+                        <span>语音朗读</span>
+                    </div>
+                    <div class="volume-slider-container">
+                        <input type="range" id="tts-volume" min="0" max="100" value="80" class="volume-slider">
+                    </div>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item">
+                    <div class="settings-item-label">
+                        <button id="bg-toggle" class="audio-btn" title="切换背景">🖼️</button>
+                        <span>背景选择</span>
+                    </div>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-item-label">
+                        <button id="log-style-toggle" class="audio-btn" title="日志样式设置">💬</button>
+                        <span>日志样式</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 日志样式设置面板 -->
+        <div id="log-style-panel" class="bg-panel hidden" style="width: 220px;">
+            <div class="bg-panel-header">日志样式</div>
+            <div class="log-style-content" style="padding: 12px;">
+                <div class="log-style-item">
+                    <label>背景颜色</label>
+                    <div class="color-presets">
+                        <div class="color-preset" data-color="black" style="background: #000;"></div>
+                        <div class="color-preset" data-color="darkblue" style="background: #1a1a2e;"></div>
+                        <div class="color-preset" data-color="darkgreen" style="background: #1a2e1a;"></div>
+                        <div class="color-preset" data-color="darkred" style="background: #2e1a1a;"></div>
+                        <div class="color-preset" data-color="darkpurple" style="background: #2e1a2e;"></div>
+                    </div>
+                </div>
+                <div class="log-style-item" style="margin-top: 12px;">
+                    <label>透明度 <span id="log-opacity-value">30%</span></label>
+                    <input type="range" id="log-opacity-slider" min="0" max="100" value="30" class="volume-slider" style="width: 100%; margin-top: 6px;">
+                </div>
+            </div>
+            <button id="log-style-close" class="bg-panel-close">✕</button>
+        </div>
+
+        <!-- 背景选择面板 -->
+        <div id="bg-panel" class="bg-panel hidden">
+            <div class="bg-panel-header">选择背景</div>
+            <div id="bg-grid" class="bg-grid"></div>
+            <button id="bg-panel-close" class="bg-panel-close">✕</button>
+        </div>
+
+        <!-- AI区域 -->
+        <div id="ai-area" class="player-area ai-area">
+            <div class="player-info-bar">
+                <div class="hero-avatar" id="ai-avatar"></div>
+                <div class="hero-details">
+                    <div class="hero-name" id="ai-name"></div>
+                    <div class="hero-faction" id="ai-faction"></div>
+                    <div class="hp-bar" id="ai-hp"></div>
+                    <div class="hero-skills" id="ai-skills"></div>
+                </div>
+                <div class="equip-area" id="ai-equip"></div>
+                <div class="card-count">
+                    <span class="card-count-icon">🂠</span>
+                    <span id="ai-card-count">0</span>
+                </div>
+            </div>
+            <div class="ai-hand-area">
+                <div id="ai-hand" class="hand-cards"></div>
+            </div>
+        </div>
+
+        <!-- 战斗日志/消息区域 -->
+        <div id="battle-log" class="battle-log">
+            <div id="log-content"></div>
+        </div>
+
+        <!-- 操作按钮区域 -->
+        <div id="action-bar" class="action-bar"></div>
+
+        <!-- 玩家区域 -->
+        <div id="player-area" class="player-area">
+            <div class="player-info-bar">
+                <div class="hero-avatar" id="player-avatar"></div>
+                <div class="hero-details">
+                    <div class="hero-name" id="player-name"></div>
+                    <div class="hero-faction" id="player-faction"></div>
+                    <div class="hp-bar" id="player-hp"></div>
+                    <div class="hero-skills" id="player-skills"></div>
+                </div>
+                <div class="equip-area" id="player-equip"></div>
+            </div>
+            <div class="player-hand-area">
+                <div id="player-hand" class="hand-cards"></div>
+            </div>
+        </div>
+
+        <!-- 响应面板（被杀时弹出） -->
+        <div id="response-panel" class="response-panel hidden">
+            <div class="response-content">
+                <p id="response-prompt"></p>
+                <div id="response-cards" class="response-cards"></div>
+                <button id="response-cancel" class="action-btn">不响应</button>
+            </div>
+        </div>
+
+        <!-- 游戏结束界面 -->
+        <div id="gameover-screen" class="gameover-overlay hidden">
+            <div class="gameover-content">
+                <h1 id="gameover-title"></h1>
+                <p id="gameover-message"></p>
+                <button id="restart-btn" class="action-btn">再来一局</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 卡牌详情提示 -->
+    <div id="card-tooltip" class="card-tooltip hidden"></div>
+
+    <!-- 技能选择面板 -->
+    <div id="skill-panel" class="skill-panel hidden">
+        <div class="skill-content">
+            <p id="skill-prompt"></p>
+            <div id="skill-cards" class="skill-cards"></div>
+            <button id="skill-cancel" class="action-btn">取消</button>
+        </div>
+    </div>
+
+    <script src="js/cards.js"></script>
+    <script src="js/heroes.js"></script>
+    <script src="js/ai.js"></script>
+    <script src="js/game.js"></script>
+    <script>
+        // 设置面板开关逻辑
+        document.addEventListener('DOMContentLoaded', () => {
+            const toggle = document.getElementById('settings-toggle');
+            const panel = document.getElementById('settings-panel');
+            const close = document.getElementById('settings-close');
+            if (toggle) toggle.addEventListener('click', () => panel.classList.toggle('hidden'));
+            if (close) close.addEventListener('click', () => panel.classList.add('hidden'));
+        });
+    </script>
+</body>
+</html>
