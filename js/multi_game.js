@@ -46,6 +46,9 @@ const MultiGame = {
     ttsVolume: 0.8,
     _speechQueue: [],
     _speaking: false,
+    _ttsUnlocked: false,
+    _voices: [],
+    _ttsKeepAlive: null,
     logBgColor: 'black',
     logOpacity: 30,
 
@@ -54,8 +57,18 @@ const MultiGame = {
         this.renderHeroList();
         this.setupEventListeners();
         if (window.speechSynthesis) {
-            window.speechSynthesis.getVoices();
-            window.speechSynthesis.onvoiceschanged = () => window.speechSynthesis.getVoices();
+            this._voices = window.speechSynthesis.getVoices();
+            window.speechSynthesis.onvoiceschanged = () => {
+                this._voices = window.speechSynthesis.getVoices();
+                this.updateAudioControlUI();
+            };
+            if (this._voices.length === 0) {
+                let tries = 0;
+                const pollVoices = setInterval(() => {
+                    this._voices = window.speechSynthesis.getVoices();
+                    if (this._voices.length > 0 || ++tries > 10) clearInterval(pollVoices);
+                }, 200);
+            }
         }
     },
 
@@ -102,7 +115,11 @@ const MultiGame = {
         if (bgmToggle) bgmToggle.addEventListener('click', () => { this.toggleBGM(); this.updateAudioControlUI(); });
         if (ttsToggle) ttsToggle.addEventListener('click', () => {
             this.ttsEnabled = !this.ttsEnabled;
-            if (!this.ttsEnabled && window.speechSynthesis) window.speechSynthesis.cancel();
+            if (this.ttsEnabled) {
+                this._warmUpTTS();
+            } else if (window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
             this.updateAudioControlUI();
         });
         if (bgmVolume) bgmVolume.addEventListener('input', (e) => {
@@ -117,7 +134,21 @@ const MultiGame = {
         const bgmToggle = document.getElementById('bgm-toggle');
         const ttsToggle = document.getElementById('tts-toggle');
         if (bgmToggle) { bgmToggle.style.opacity = this.bgmEnabled ? '1' : '0.5'; }
-        if (ttsToggle) { ttsToggle.textContent = this.ttsEnabled ? '🔊' : '🔇'; ttsToggle.style.opacity = this.ttsEnabled ? '1' : '0.5'; }
+        if (ttsToggle) {
+            if (!window.speechSynthesis) {
+                ttsToggle.textContent = '🔇';
+                ttsToggle.title = '此浏览器不支持语音朗读';
+                ttsToggle.style.opacity = '0.4';
+            } else {
+                ttsToggle.textContent = this.ttsEnabled ? '🔊' : '🔇';
+                ttsToggle.style.opacity = this.ttsEnabled ? '1' : '0.5';
+                const voices = this._voices.length > 0 ? this._voices : window.speechSynthesis.getVoices();
+                const hasZh = voices.some(v => v.lang && v.lang.startsWith('zh'));
+                ttsToggle.title = hasZh
+                    ? (this.ttsEnabled ? '语音朗读已开启' : '语音朗读已关闭')
+                    : '未检测到中文语音引擎，Windows可在"设置→时间与语言→语音"中添加中文语音包';
+            }
+        }
     },
 
     initLogStylePanel() {
@@ -332,6 +363,9 @@ const MultiGame = {
         this.currentPlayer = 0;
         this.phase = 'play';
         this.processing = true;
+
+        // 在用户手势中预热 TTS（iOS Safari / 移动端必须）
+        this._warmUpTTS();
 
         let heroNames = this.players.map(p => p.hero.name).join('、');
         this.log(`游戏开始！${this.playerCount}人混战：${heroNames}`, 'system');
@@ -833,6 +867,23 @@ const MultiGame = {
         this._enqueueSpeech(cleanText, { rate: 1.1, pitch: 1.0, priority: 0 });
     },
 
+    // 预热 TTS 引擎（解决 iOS Safari / 移动端首次不出声）
+    _warmUpTTS() {
+        if (this._ttsUnlocked) return;
+        if (!window.speechSynthesis) return;
+        this._ttsUnlocked = true;
+        try {
+            const warmup = new SpeechSynthesisUtterance(' ');
+            warmup.volume = 0;
+            warmup.rate = 1;
+            warmup.lang = 'zh-CN';
+            window.speechSynthesis.speak(warmup);
+            window.speechSynthesis.cancel();
+        } catch (e) {
+            console.warn('[TTS] 预热失败:', e);
+        }
+    },
+
     // 语音队列管理
     _enqueueSpeech(text, opts) {
         if (opts.priority === 0) {
@@ -851,18 +902,65 @@ const MultiGame = {
     _processSpeechQueue() {
         if (this._speechQueue.length === 0) {
             this._speaking = false;
+            this._stopTTSKeepAlive();
             return;
         }
         this._speaking = true;
         const item = this._speechQueue.shift();
+        if (window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+        }
         const u = new SpeechSynthesisUtterance(item.text);
         u.lang = 'zh-CN'; u.rate = item.rate || 1.0; u.pitch = item.pitch || 1.0; u.volume = this.ttsVolume;
-        const voices = window.speechSynthesis.getVoices();
-        const zh = voices.find(v => v.lang.startsWith('zh'));
+        const voices = this._voices.length > 0 ? this._voices : window.speechSynthesis.getVoices();
+        const zh = voices.find(v => v.lang && v.lang.startsWith('zh'));
         if (zh) u.voice = zh;
-        u.onend = () => { this._processSpeechQueue(); };
-        u.onerror = () => { this._processSpeechQueue(); };
-        window.speechSynthesis.speak(u);
+        let retried = false;
+        u.onend = () => {
+            this._stopTTSKeepAlive();
+            this._processSpeechQueue();
+        };
+        u.onerror = (e) => {
+            this._stopTTSKeepAlive();
+            if (!retried && e.error !== 'canceled' && e.error !== 'interrupted') {
+                retried = true;
+                setTimeout(() => {
+                    try {
+                        window.speechSynthesis.speak(u);
+                        this._startTTSKeepAlive();
+                    } catch (err) {
+                        this._processSpeechQueue();
+                    }
+                }, 100);
+            } else {
+                this._processSpeechQueue();
+            }
+        };
+        try {
+            window.speechSynthesis.speak(u);
+            this._startTTSKeepAlive();
+        } catch (e) {
+            console.warn('[TTS] speak 异常:', e);
+            this._processSpeechQueue();
+        }
+    },
+
+    // Chrome 保活：防止长时间运行后 speechSynthesis 静默失效
+    _startTTSKeepAlive() {
+        this._stopTTSKeepAlive();
+        this._ttsKeepAlive = setInterval(() => {
+            if (window.speechSynthesis.speaking) {
+                window.speechSynthesis.pause();
+                window.speechSynthesis.resume();
+            }
+        }, 10000);
+    },
+
+    _stopTTSKeepAlive() {
+        if (this._ttsKeepAlive) {
+            clearInterval(this._ttsKeepAlive);
+            this._ttsKeepAlive = null;
+        }
     },
 
     sayHeroLine(playerIdx, eventType) {
