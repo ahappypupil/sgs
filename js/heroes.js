@@ -150,6 +150,11 @@ const HEROES = [
         bio: '字孔明，号卧龙。三顾茅庐出山辅佐刘备，草船借箭，空城退敌，六出祁山。鞠躬尽瘁，死而后已。',
         skills: [
             {
+                name: '观星',
+                type: 'active',
+                desc: '回合开始阶段，你可以观看牌堆顶的牌（最多5张），将其中任意数量的牌以任意顺序置于牌堆顶，其余置于牌堆底。',
+            },
+            {
                 name: '空城',
                 type: 'passive',
                 desc: '当你没有手牌时，不能成为【杀】和【决斗】的目标。',
@@ -290,6 +295,11 @@ const HEROES = [
         bio: '孙权之妹，刘备之妻。自幼好武，才捷刚猛，有诸兄之风。刘备入蜀后，孙权派人接回，后投江殉情。',
         skills: [
             {
+                name: '结姻',
+                type: 'active',
+                desc: '出牌阶段限一次，你可以弃两张手牌并选择一名其他角色，你与其各回复1点体力。',
+            },
+            {
                 name: '枭姬',
                 type: 'triggered',
                 desc: '当你失去装备区里的一张牌后，你可以摸两张牌。',
@@ -351,6 +361,11 @@ const HEROES = [
                 name: '反馈',
                 type: 'triggered',
                 desc: '当你受到伤害后，你可以获得伤害来源的一张牌。',
+            },
+            {
+                name: '鬼才',
+                type: 'active',
+                desc: '在一名角色的判定牌生效前，你可以打出一张手牌代替此判定牌。',
             }
         ],
         lines: {
@@ -432,6 +447,11 @@ const HEROES = [
         bio: '字奉孝，颍川阳翟人。曹操首席谋士，算无遗策。十胜十败论定大局，遗计定辽东。英年早逝，曹操痛哭。',
         skills: [
             {
+                name: '天妒',
+                type: 'triggered',
+                desc: '当你的判定牌生效后，你可以获得此牌。',
+            },
+            {
                 name: '遗计',
                 type: 'triggered',
                 desc: '当你受到伤害后，你可以摸两张牌，然后将任意张牌交给其他角色。',
@@ -491,6 +511,11 @@ const HEROES = [
                 name: '驱虎',
                 type: 'triggered',
                 desc: '当你受到伤害后，你可以令伤害来源受到1点伤害。',
+            },
+            {
+                name: '节命',
+                type: 'triggered',
+                desc: '当你受到伤害后，你可以令一名角色将手牌摸至其体力上限。',
             }
         ],
         lines: {
@@ -515,6 +540,11 @@ const HEROES = [
         title: '文昭甄皇后',
         bio: '中山无极人，魏文帝曹丕之妻，魏明帝曹叡生母。倾国倾城，才情出众。曹植《洛神赋》相传即为纪念她而作。',
         skills: [
+            {
+                name: '倾国',
+                type: 'active',
+                desc: '你可以将一张黑色手牌当【闪】使用或打出。',
+            },
             {
                 name: '洛神',
                 type: 'triggered',
@@ -694,6 +724,11 @@ const HEROES = [
                 name: '国色',
                 type: 'active',
                 desc: '出牌阶段，你可以将一张方块牌当【乐不思蜀】使用。',
+            },
+            {
+                name: '流离',
+                type: 'active',
+                desc: '当你成为【杀】的目标时，你可以弃一张牌，将此【杀】转移给你距离为1的另一名角色。',
             }
         ],
         lines: {
@@ -718,6 +753,11 @@ const HEROES = [
         title: '江陵侯',
         bio: '字伯言，吴郡吴县人。书生拜将，夷陵之战火烧连营七百里，大败刘备。后任丞相，总领朝政。儒将风范，一代名将。',
         skills: [
+            {
+                name: '谦逊',
+                type: 'passive',
+                desc: '你不能成为【乐不思蜀】的目标。',
+            },
             {
                 name: '连营',
                 type: 'passive',
@@ -750,6 +790,11 @@ const HEROES = [
                 name: '天香',
                 type: 'triggered',
                 desc: '当你受到伤害时，你可以弃置一张红桃手牌，将此伤害转移给一名其他角色。',
+            },
+            {
+                name: '红颜',
+                type: 'passive',
+                desc: '你的黑桃牌均视为红桃花色。',
             }
         ],
         lines: {
@@ -808,6 +853,11 @@ const HEROES = [
                 name: '离间',
                 type: 'active',
                 desc: '出牌阶段，你可以弃一张牌，令两名男性角色进行【决斗】。',
+            },
+            {
+                name: '闭月',
+                type: 'triggered',
+                desc: '结束阶段，你可以摸一张牌。',
             }
         ],
         lines: {
@@ -837,6 +887,11 @@ const HEROES = [
                 type: 'active',
                 desc: '你的回合外，你可以将一张红色牌当【桃】使用。',
                 defKey: 'tao'
+            },
+            {
+                name: '青囊',
+                type: 'active',
+                desc: '出牌阶段限一次，你可以弃一张手牌并选择一名其他角色，令其回复1点体力。',
             }
         ],
         lines: {
@@ -894,6 +949,11 @@ const HEROES = [
                 name: '完杀',
                 type: 'passive',
                 desc: '在你的回合内，濒死状态的角色只能使用【桃】自救。',
+            },
+            {
+                name: '帷幕',
+                type: 'passive',
+                desc: '你不能成为黑色锦囊牌的目标。',
             }
         ],
         lines: {

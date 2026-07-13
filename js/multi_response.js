@@ -3,13 +3,21 @@
 
 Object.assign(MultiGame, {
     // ===== 目标选择 =====
-    askPlayerSelectTarget(prompt, sourceIdx) {
+    askPlayerSelectTarget(prompt, sourceIdx, card) {
         return new Promise((resolve) => {
             this.targetResolver = resolve;
             this.processing = true;
             this.render();
 
-            const aliveOpponents = this.players.filter((p, i) => i !== sourceIdx && !p.dead);
+            let aliveOpponents = this.players.filter((p, i) => i !== sourceIdx && !p.dead);
+            // 谦逊（陆逊）：不能成为乐不思蜀目标
+            if (card && card.defKey === 'lebusishu') {
+                aliveOpponents = aliveOpponents.filter(p => !hasSkill(p.hero, '谦逊'));
+            }
+            // 帷幕（贾诩）：不能成为黑色锦囊牌目标
+            if (card && card.type === 'trick' && !card.isRed) {
+                aliveOpponents = aliveOpponents.filter(p => !hasSkill(p.hero, '帷幕'));
+            }
             if (aliveOpponents.length === 0) {
                 this.processing = false;
                 resolve(-1);
@@ -67,6 +75,8 @@ Object.assign(MultiGame, {
             const player = this.players[0];
             const shans = player.hand.filter(c => c.defKey === 'shan');
             const shas = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'sha') : [];
+            // 倾国（甄姬）：黑色手牌当闪
+            const qingguoCards = hasSkill(player.hero, '倾国') ? player.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
 
             const promptText = needCount > 1
                 ? `${attackerName}使用了【杀】（无双），你需要出${needCount}张【闪】`
@@ -75,7 +85,7 @@ Object.assign(MultiGame, {
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
 
-            [...shans, ...shas].forEach(card => {
+            [...shans, ...shas, ...qingguoCards].forEach(card => {
                 const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
@@ -175,12 +185,14 @@ Object.assign(MultiGame, {
             const player = this.players[0];
             const shans = player.hand.filter(c => c.defKey === 'shan');
             const shas = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'sha') : [];
+            // 倾国（甄姬）：黑色手牌当闪
+            const qingguoCards = hasSkill(player.hero, '倾国') ? player.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
 
             document.getElementById('response-prompt').textContent = '万箭齐发！是否出【闪】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
 
-            [...shans, ...shas].forEach(card => {
+            [...shans, ...shas, ...qingguoCards].forEach(card => {
                 const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
@@ -459,6 +471,8 @@ Object.assign(MultiGame, {
         if (this.responseMode === 'dodge') {
             if (card.defKey === 'shan') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
+            // 倾国（甄姬）：黑色手牌当闪
+            if (hasSkill(player.hero, '倾国') && !card.isRed) return true;
             return false;
         }
         if (this.responseMode === 'duel') return card.defKey === 'sha';
@@ -470,6 +484,8 @@ Object.assign(MultiGame, {
         if (this.responseMode === 'wanjian') {
             if (card.defKey === 'shan') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
+            // 倾国（甄姬）：黑色手牌当闪
+            if (hasSkill(player.hero, '倾国') && !card.isRed) return true;
             return false;
         }
         if (this.responseMode === 'peach') return card.defKey === 'tao';

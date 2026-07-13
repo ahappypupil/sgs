@@ -53,6 +53,20 @@ const AI = {
             }
         }
 
+        // 优先级2.8: 青囊技能（华佗）- 残血时使用
+        if (hasSkill(ai.hero, '青囊') && !game.hasUsedQingnangThisTurn && ai.hp < ai.maxHp && ai.hand.length > 1) {
+            if (Math.random() < 0.5) {
+                return { action: 'skill_qingnang' };
+            }
+        }
+
+        // 优先级2.9: 结姻技能（孙尚香）- 残血且手牌充足时使用
+        if (hasSkill(ai.hero, '结姻') && !game.hasUsedJieyinThisTurn && ai.hp < ai.maxHp && ai.hand.length >= 3) {
+            if (Math.random() < 0.5) {
+                return { action: 'skill_jieyin' };
+            }
+        }
+
         // 优先级3: 装备
         const equip = this.findEquipCard(ai.hand);
         if (equip && !this.hasEquipType(ai, equip.equipType)) {
@@ -68,11 +82,11 @@ const AI = {
         // 优先级5: 顺手牵羊/过河拆桥（针对玩家）
         if (player.hand.length > 0 || this.hasAnyEquip(player)) {
             const shunshou = this.findCard(ai.hand, 'shunshouqiannyang');
-            if (shunshou) {
+            if (shunshou && !(hasSkill(player.hero, '帷幕') && !shunshou.isRed)) {
                 return { action: 'play', card: shunshou, target: 0 };
             }
             const guohe = this.findCard(ai.hand, 'guohechaiqiao');
-            if (guohe) {
+            if (guohe && !(hasSkill(player.hero, '帷幕') && !guohe.isRed)) {
                 return { action: 'play', card: guohe, target: 0 };
             }
             // 奇袭（甘宁）：黑色牌当过河拆桥
@@ -86,11 +100,11 @@ const AI = {
 
         // 优先级5.5: 乐不思蜀（控制对方）
         const lebusishu = this.findCard(ai.hand, 'lebusishu');
-        if (lebusishu) {
+        if (lebusishu && !hasSkill(player.hero, '谦逊')) {
             return { action: 'play', card: lebusishu, target: 0 };
         }
         // 国色（大乔）：方块牌当乐不思蜀
-        if (hasSkill(ai.hero, '国色')) {
+        if (hasSkill(ai.hero, '国色') && !hasSkill(player.hero, '谦逊')) {
             const diamondCard = ai.hand.find(c => c.suit === '♦' && c.defKey !== 'lebusishu' && c.defKey !== 'sha' && c.defKey !== 'shan');
             if (diamondCard) {
                 return { action: 'play', card: diamondCard, target: 0, playAs: { as: 'lebusishu', skill: '国色' } };
@@ -99,7 +113,7 @@ const AI = {
 
         // 优先级5.6: 火攻（直接伤害）
         const huogong = this.findCard(ai.hand, 'huogong');
-        if (huogong && ai.hand.length > 1) {
+        if (huogong && ai.hand.length > 1 && !(hasSkill(player.hero, '帷幕') && !huogong.isRed)) {
             return { action: 'play', card: huogong, target: 0 };
         }
 
@@ -129,7 +143,7 @@ const AI = {
 
         // 优先级7: 决斗（手牌中有杀时使用）
         const juedou = this.findCard(ai.hand, 'juedou');
-        if (juedou) {
+        if (juedou && !(hasSkill(player.hero, '帷幕') && !juedou.isRed)) {
             const shaCount = ai.hand.filter(c => c.defKey === 'sha').length;
             const wushengCard = ai.hand.find(c => c.isRed && c.defKey !== 'sha' && c.defKey !== 'tao' && c.defKey !== 'shan');
             if (shaCount >= 2 || (shaCount >= 1 && hasSkill(ai.hero, '武圣') && wushengCard)) {
@@ -195,7 +209,9 @@ const AI = {
         // 赵云龙胆：闪当杀，杀当闪
         const availableShans = ai.hand.filter(c => c.defKey === 'shan');
         const availableShas = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'sha') : [];
-        const totalAvailable = [...availableShans, ...availableShas];
+        // 倾国（甄姬）：黑色手牌当闪
+        const qingguoCards = hasSkill(ai.hero, '倾国') ? ai.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+        const totalAvailable = [...availableShans, ...availableShas, ...qingguoCards];
         
         if (totalAvailable.length < needCount) {
             // 不够闪
@@ -212,18 +228,18 @@ const AI = {
         
         // 如果受到伤害会死，一定闪
         if (hpAfterDamage <= 0) {
-            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount) };
+            return { dodge: true, cards: this.pickDodgeCardsWithQingguo(availableShans, availableShas, qingguoCards, needCount) };
         }
 
         // HP低时倾向闪
         if (ai.hp <= 2) {
-            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount) };
+            return { dodge: true, cards: this.pickDodgeCardsWithQingguo(availableShans, availableShas, qingguoCards, needCount) };
         }
 
         // HP较高时有一定概率闪
         const dodgeProb = 0.5 + (1 - ai.hp / ai.maxHp) * 0.3;
         if (Math.random() < dodgeProb) {
-            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount) };
+            return { dodge: true, cards: this.pickDodgeCardsWithQingguo(availableShans, availableShas, qingguoCards, needCount) };
         }
 
         return { dodge: false, cards: [] };
@@ -469,6 +485,14 @@ const AI = {
         for (let i = 0; i < shas.length && cards.length < count; i++) {
             cards.push(shas[i]);
         }
+        return cards;
+    },
+
+    pickDodgeCardsWithQingguo(shans, shas, qingguoCards, count) {
+        const cards = [];
+        for (let i = 0; i < shans.length && cards.length < count; i++) cards.push(shans[i]);
+        for (let i = 0; i < shas.length && cards.length < count; i++) cards.push(shas[i]);
+        for (let i = 0; i < qingguoCards.length && cards.length < count; i++) cards.push(qingguoCards[i]);
         return cards;
     }
 };

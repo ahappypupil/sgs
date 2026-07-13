@@ -159,12 +159,19 @@ Object.assign(MultiGame, {
 
         player.hand.forEach(card => {
             const playable = this.getCardPlayableAs(0, card);
-            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver;
+            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode;
             const isDiscardable = this.discardMode;
+            const isSkillSelectable = this.qingnangMode || this.jieyinMode;
 
-            const cardEl = this.createCardElement(card, isPlayable || isDiscardable);
-            if (isPlayable && !isDiscardable) cardEl.classList.add('playable');
-            else if (!isPlayable && !isDiscardable && this.currentPlayer === 0 && !this.responseResolver && !this.processing && !this.targetResolver) cardEl.classList.add('unplayable');
+            const cardEl = this.createCardElement(card, isPlayable || isDiscardable || isSkillSelectable);
+            if (isPlayable && !isDiscardable && !isSkillSelectable) cardEl.classList.add('playable');
+            else if (isSkillSelectable) {
+                cardEl.classList.add('playable');
+                if (this.jieyinMode && this.jieyinCards.some(c => c.id === card.id)) {
+                    cardEl.style.borderColor = '#ffd700';
+                    cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
+                }
+            } else if (!isPlayable && !isDiscardable && this.currentPlayer === 0 && !this.responseResolver && !this.processing && !this.targetResolver) cardEl.classList.add('unplayable');
 
             cardEl.addEventListener('click', () => this.onPlayerCardClick(card));
             cardEl.addEventListener('mouseenter', (e) => this.showTooltip(card, e));
@@ -179,7 +186,7 @@ Object.assign(MultiGame, {
         const actionBar = document.getElementById('action-bar');
         actionBar.innerHTML = '';
 
-        if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver && !this.zhihengMode && !this.lijianMode && !this.fanjianMode) {
+        if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver && !this.zhihengMode && !this.lijianMode && !this.fanjianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode) {
             const player = this.players[0];
 
             // 苦肉
@@ -218,6 +225,24 @@ Object.assign(MultiGame, {
                 actionBar.appendChild(btn);
             }
 
+            // 青囊（华佗）
+            if (hasSkill(player.hero, '青囊') && !this.hasUsedQingnangThisTurn && player.hand.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '青囊';
+                btn.addEventListener('click', () => this.executeQingnang(0));
+                actionBar.appendChild(btn);
+            }
+
+            // 结姻（孙尚香）
+            if (hasSkill(player.hero, '结姻') && !this.hasUsedJieyinThisTurn && player.hand.length >= 2) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '结姻';
+                btn.addEventListener('click', () => this.executeJieyin(0));
+                actionBar.appendChild(btn);
+            }
+
             // 结束回合
             const endBtn = document.createElement('button');
             endBtn.className = 'action-btn';
@@ -228,7 +253,7 @@ Object.assign(MultiGame, {
                 }
             });
             actionBar.appendChild(endBtn);
-        } else if (this.currentPlayer !== 0 && !this.gameOver && this.players[this.currentPlayer] && !this.zhihengMode && !this.lijianMode) {
+        } else if (this.currentPlayer !== 0 && !this.gameOver && this.players[this.currentPlayer] && !this.zhihengMode && !this.lijianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode) {
             const indicator = document.createElement('span');
             indicator.className = 'action-info-box ai-thinking';
             indicator.textContent = `${this.players[this.currentPlayer].hero.name}思考中`;
@@ -280,6 +305,69 @@ Object.assign(MultiGame, {
             info.className = 'action-info-box';
             info.textContent = `反间：请选择一张手牌给对手`;
             actionBar.appendChild(info);
+        }
+
+        if (this.qingnangMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `青囊：请选择一张手牌弃置`;
+            actionBar.appendChild(info);
+        }
+
+        if (this.jieyinMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `结姻：已选${this.jieyinCards.length}/2张`;
+            actionBar.appendChild(info);
+            if (this.jieyinCards.length >= 2) {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'action-btn green';
+                confirmBtn.textContent = '确认结姻';
+                confirmBtn.addEventListener('click', async () => {
+                    const targetIdx = await this.askPlayerSelectTarget('选择结姻的目标', 0);
+                    if (targetIdx === -1) {
+                        this.jieyinCards = [];
+                        this.jieyinMode = false;
+                        if (this.jieyinResolver) { const r = this.jieyinResolver; this.jieyinResolver = null; r(); }
+                        this.render();
+                        return;
+                    }
+                    this.confirmJieyin(targetIdx);
+                });
+                actionBar.appendChild(confirmBtn);
+            }
+        }
+
+        if (this.guanxingMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `观星：点击选择置于牌堆顶的牌（已选${this.guanxingSelected ? this.guanxingSelected.length : 0}张）`;
+            actionBar.appendChild(info);
+            if (this.guanxingCards) {
+                this.guanxingCards.forEach((card, i) => {
+                    const cardEl = this.createCardElement(card, true);
+                    const isSelected = this.guanxingSelected && this.guanxingSelected.includes(i);
+                    if (isSelected) {
+                        cardEl.style.borderColor = '#ffd700';
+                        cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
+                    }
+                    cardEl.addEventListener('click', () => {
+                        if (!this.guanxingSelected) this.guanxingSelected = [];
+                        const idx = this.guanxingSelected.indexOf(i);
+                        if (idx >= 0) this.guanxingSelected.splice(idx, 1);
+                        else this.guanxingSelected.push(i);
+                        this.render();
+                    });
+                    actionBar.appendChild(cardEl);
+                });
+            }
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'action-btn green';
+            confirmBtn.textContent = '确认观星';
+            confirmBtn.addEventListener('click', () => {
+                this.confirmGuanxing(this.guanxingSelected || []);
+            });
+            actionBar.appendChild(confirmBtn);
         }
     }
 });

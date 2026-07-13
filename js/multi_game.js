@@ -16,8 +16,20 @@ const MultiGame = {
     hasUsedZhihengThisTurn: false,
     hasUsedLijianThisTurn: false,
     hasUsedFanjianThisTurn: false,
+    hasUsedQingnangThisTurn: false,
+    hasUsedJieyinThisTurn: false,
+    hasUsedGuanxingThisTurn: false,
     fanjianMode: false,
     fanjianResolver: null,
+    qingnangMode: false,
+    qingnangResolver: null,
+    jieyinMode: false,
+    jieyinCards: [],
+    jieyinResolver: null,
+    guanxingMode: false,
+    guanxingCards: [],
+    guanxingSelected: [],
+    guanxingResolver: null,
     responseResolver: null,
     responseMode: null,
     responseSelectedCards: [],
@@ -341,10 +353,16 @@ const MultiGame = {
         this.hasUsedZhihengThisTurn = false;
         this.hasUsedLijianThisTurn = false;
         this.hasUsedFanjianThisTurn = false;
+        this.hasUsedQingnangThisTurn = false;
+        this.hasUsedJieyinThisTurn = false;
+        this.hasUsedGuanxingThisTurn = false;
         this.processing = false;
         this.log(`${player.hero.name}的回合开始`, playerIdx === 0 ? 'player' : 'ai');
         this.sayHeroLine(playerIdx, 'turnStart');
         this.render();
+
+        // 观星技能（诸葛亮）- 回合开始阶段
+        await this.processGuanxing(playerIdx);
 
         // 洛神技能（甄姬）- 回合开始阶段
         await this.processLuoshen(playerIdx);
@@ -403,6 +421,16 @@ const MultiGame = {
                 await this.delay(800);
                 continue;
             }
+            if (action.action === 'skill_qingnang') {
+                await this.executeQingnang(playerIdx);
+                await this.delay(800);
+                continue;
+            }
+            if (action.action === 'skill_jieyin') {
+                await this.executeJieyin(playerIdx);
+                await this.delay(800);
+                continue;
+            }
             if (action.action === 'play_wusheng') {
                 await this.executeWuSheng(playerIdx, action.card, action.target);
                 await this.delay(800);
@@ -442,6 +470,15 @@ const MultiGame = {
                 await new Promise(resolve => { this.discardResolver = resolve; });
                 this.discardMode = false;
             }
+        }
+
+        // 闭月（貂蝉）：结束阶段摸一张牌
+        if (hasSkill(player.hero, '闭月')) {
+            const card = this.drawCard();
+            player.hand.push(card);
+            this.log(`${player.hero.name}发动【闭月】，摸了1张牌`, playerIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(playerIdx, 'skill');
+            this.render();
         }
 
         this.log(`${player.hero.name}回合结束`, playerIdx === 0 ? 'player' : 'ai');
@@ -558,6 +595,29 @@ const MultiGame = {
             }
             return;
         }
+        // 青囊模式：选一张牌弃置，然后选目标
+        if (this.qingnangMode) {
+            const targetIdx = await this.askPlayerSelectTarget('选择青囊的目标', 0);
+            if (targetIdx === -1) {
+                this.qingnangMode = false;
+                if (this.qingnangResolver) { const r = this.qingnangResolver; this.qingnangResolver = null; r(); }
+                this.render();
+                return;
+            }
+            this.confirmQingnang(card, targetIdx);
+            return;
+        }
+        // 结姻模式：选两张牌弃置
+        if (this.jieyinMode) {
+            const idx = this.jieyinCards.findIndex(c => c.id === card.id);
+            if (idx >= 0) {
+                this.jieyinCards.splice(idx, 1);
+            } else {
+                this.jieyinCards.push(card);
+            }
+            this.render();
+            return;
+        }
         if (this.processing) return;
         if (this.currentPlayer !== 0) return;
 
@@ -637,7 +697,7 @@ const MultiGame = {
         }
 
         if (needsTarget) {
-            targetIdx = await this.askPlayerSelectTarget(`选择【${card.name}】的目标`, 0);
+            targetIdx = await this.askPlayerSelectTarget(`选择【${card.name}】的目标`, 0, card);
             if (targetIdx === -1) return;
         }
 

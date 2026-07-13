@@ -15,9 +15,21 @@ const Game = {
     hasUsedZhihengThisTurn: false,
     hasUsedLijianThisTurn: false,
     hasUsedFanjianThisTurn: false,
+    hasUsedQingnangThisTurn: false,
+    hasUsedJieyinThisTurn: false,
+    hasUsedGuanxingThisTurn: false,
     fanjianMode: false,
     fanjianResolver: null,
     fanjianTargetIdx: -1,
+    qingnangMode: false,
+    qingnangResolver: null,
+    jieyinMode: false,
+    jieyinCards: [],
+    jieyinResolver: null,
+    guanxingMode: false,
+    guanxingResolver: null,
+    liuliMode: false,
+    liuliResolver: null,
     responseResolver: null,
     responseMode: null, // 'dodge', 'duel', 'nanman', 'wanjian', 'peach', 'rende'
     responseSelectedCards: [],
@@ -597,6 +609,9 @@ const Game = {
         this.hasSlashedThisTurn = false;
         this.hasUsedKurouThisTurn = false;
         this.hasUsedFanjianThisTurn = false;
+        this.hasUsedQingnangThisTurn = false;
+        this.hasUsedJieyinThisTurn = false;
+        this.hasUsedGuanxingThisTurn = false;
         this.processing = true; // 防止在回合开始前误操作
 
         this.log(`游戏开始！你的武将是 ${playerHero.name}，对方武将是 ${aiHero.name}`, 'system');
@@ -691,6 +706,14 @@ const Game = {
 
     afterDiscard(playerIdx) {
         this.discardMode = false;
+        // 闭月（貂蝉）：结束阶段摸一张牌
+        if (hasSkill(this.players[playerIdx].hero, '闭月')) {
+            const card = this.drawCard();
+            this.players[playerIdx].hand.push(card);
+            this.log(`${this.players[playerIdx].hero.name}发动【闭月】，摸了1张牌`, playerIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(playerIdx, 'skill');
+            this.render();
+        }
         if (playerIdx === 0) {
             this.log(`你的回合结束`, 'player');
             this.render();
@@ -713,8 +736,14 @@ const Game = {
         this.hasUsedZhihengThisTurn = false;
         this.hasUsedLijianThisTurn = false;
         this.hasUsedFanjianThisTurn = false;
+        this.hasUsedQingnangThisTurn = false;
+        this.hasUsedJieyinThisTurn = false;
+        this.hasUsedGuanxingThisTurn = false;
         this.log(`${this.players[1].hero.name}回合开始`, 'ai');
         this.sayHeroLine(1, 'turnStart');
+        
+        // 观星技能（诸葛亮）- 回合开始阶段
+        await this.processGuanxing(1);
         
         // 洛神技能（甄姬）- 回合开始阶段
         await this.processLuoshen(1);
@@ -810,6 +839,16 @@ const Game = {
             }
             if (action.action === 'skill_fanjian') {
                 await this.executeFanjian(1);
+                await this.delay(800);
+                continue;
+            }
+            if (action.action === 'skill_qingnang') {
+                await this.executeQingnang(1);
+                await this.delay(800);
+                continue;
+            }
+            if (action.action === 'skill_jieyin') {
+                await this.executeJieyin(1);
                 await this.delay(800);
                 continue;
             }
@@ -1050,6 +1089,283 @@ const Game = {
         }
     },
 
+    // ===== 红颜（小乔）：黑桃牌视为红桃 =====
+    isCardRedFor(card, hero) {
+        if (hasSkill(hero, '红颜') && card.suit === SUIT.SPADE) return true;
+        return card.isRed;
+    },
+
+    // ===== 天妒/鬼才：判定牌处理 =====
+    async processJudgeCard(playerIdx, judgeCard) {
+        const player = this.players[playerIdx];
+        // 鬼才（司马懿）：在判定牌生效前，可以打出一张手牌代替
+        const guicaiPlayerIdx = playerIdx === 0 ? 1 : 0;
+        const guicaiPlayer = this.players[guicaiPlayerIdx];
+        if (hasSkill(guicaiPlayer.hero, '鬼才') && guicaiPlayer.hand.length > 0) {
+            if (guicaiPlayer.isAI) {
+                // AI鬼才：简单策略，30%概率替换
+                if (Math.random() < 0.3) {
+                    const replaceCard = guicaiPlayer.hand[0];
+                    guicaiPlayer.hand = guicaiPlayer.hand.filter(c => c.id !== replaceCard.id);
+                    this.discardPile.push(judgeCard);
+                    this.log(`${guicaiPlayer.hero.name}发动【鬼才】，用【${replaceCard.name}】替换判定牌`, guicaiPlayerIdx === 0 ? 'player' : 'ai');
+                    this.sayHeroLine(guicaiPlayerIdx, 'skill');
+                    this.render();
+                    await this.delay(800);
+                    return replaceCard;
+                }
+            } else {
+                // 玩家鬼才：询问是否替换
+                const useGuicai = await this.askGuicai(judgeCard, playerIdx);
+                if (useGuicai) {
+                    const replaceCard = useGuicai;
+                    this.players[0].hand = this.players[0].hand.filter(c => c.id !== replaceCard.id);
+                    this.discardPile.push(judgeCard);
+                    this.log(`你发动【鬼才】，用【${replaceCard.name}】替换判定牌`, 'player');
+                    this.sayHeroLine(0, 'skill');
+                    this.render();
+                    await this.delay(800);
+                    return replaceCard;
+                }
+            }
+        }
+        // 天妒（郭嘉）：判定牌生效后获得此牌
+        if (hasSkill(player.hero, '天妒')) {
+            // 从弃牌堆取回
+            const idx = this.discardPile.findIndex(c => c.id === judgeCard.id);
+            if (idx >= 0) {
+                this.discardPile.splice(idx, 1);
+            }
+            player.hand.push(judgeCard);
+            this.log(`${player.hero.name}发动【天妒】，获得判定牌【${judgeCard.name}】`, playerIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(playerIdx, 'skill');
+            this.render();
+            await this.delay(600);
+        }
+        return judgeCard;
+    },
+
+    // 询问玩家是否发动鬼才
+    askGuicai(judgeCard, judgePlayerIdx) {
+        return new Promise((resolve) => {
+            this.responseMode = 'guicai';
+            this.responseResolver = resolve;
+            const promptText = `判定牌：${judgeCard.suit}${judgeCard.number}（${judgeCard.name}）。是否发动【鬼才】替换？`;
+            document.getElementById('response-prompt').textContent = promptText;
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+
+            // 显示玩家手牌
+            const player = this.players[0];
+            player.hand.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.classList.add('playable');
+                cardEl.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r(card);
+                });
+                container.appendChild(cardEl);
+            });
+
+            // 不替换按钮
+            const btn = document.createElement('button');
+            btn.className = 'action-btn';
+            btn.textContent = '不替换';
+            btn.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r(null);
+            });
+            container.appendChild(btn);
+
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
+    // ===== 观星（诸葛亮）=====
+    async processGuanxing(playerIdx) {
+        const player = this.players[playerIdx];
+        if (!hasSkill(player.hero, '观星')) return;
+        this.hasUsedGuanxingThisTurn = true;
+        this.sayHeroLine(playerIdx, 'skill');
+        const viewCount = Math.min(5, this.deck.length);
+        if (viewCount === 0) return;
+        const topCards = [];
+        for (let i = 0; i < viewCount; i++) {
+            topCards.push(this.deck.pop());
+        }
+        if (player.isAI) {
+            // AI观星：简单策略，杀闪桃放上面，其他放下面
+            const priority = (c) => {
+                if (c.defKey === 'sha' || c.defKey === 'shan' || c.defKey === 'tao') return 0;
+                if (c.type === 'trick') return 1;
+                return 2;
+            };
+            topCards.sort((a, b) => priority(a) - priority(b));
+            // 放回牌堆
+            for (let i = topCards.length - 1; i >= 0; i--) {
+                this.deck.push(topCards[i]);
+            }
+            this.log(`${player.hero.name}发动【观星】，查看了${viewCount}张牌`, 'ai');
+            this.render();
+            await this.delay(800);
+        } else {
+            // 玩家观星：显示牌并选择排列
+            this.log(`你发动【观星】，查看牌堆顶${viewCount}张牌`, 'player');
+            this.guanxingCards = topCards;
+            this.guanxingSelected = [];
+            this.guanxingMode = true;
+            this.render();
+            await new Promise(resolve => { this.guanxingResolver = resolve; });
+            this.guanxingMode = false;
+        }
+    },
+
+    // 玩家确认观星排列
+    confirmGuanxing(topIndices) {
+        const top = [];
+        const bottom = [];
+        this.guanxingCards.forEach((card, i) => {
+            if (topIndices.includes(i)) top.push(card);
+            else bottom.push(card);
+        });
+        // 先放底部（反向push），再放顶部（反向push）
+        for (let i = bottom.length - 1; i >= 0; i--) {
+            this.deck.push(bottom[i]);
+        }
+        for (let i = top.length - 1; i >= 0; i--) {
+            this.deck.push(top[i]);
+        }
+        this.log(`观星完成，${top.length}张置于牌堆顶，${bottom.length}张置于牌堆底`, 'player');
+        this.guanxingMode = false;
+        if (this.guanxingResolver) {
+            const r = this.guanxingResolver;
+            this.guanxingResolver = null;
+            r();
+        }
+    },
+
+    // ===== 青囊（华佗）=====
+    async executeQingnang(playerIdx) {
+        const player = this.players[playerIdx];
+        this.hasUsedQingnangThisTurn = true;
+        this.sayHeroLine(playerIdx, 'skill');
+        if (player.isAI) {
+            // AI青囊：弃一张低价值牌，治疗自己（1v1中只能治对方，但简化为治疗自己如果残血）
+            if (player.hp < player.maxHp) {
+                const discardCard = AI.chooseDiscard(this, 1)[0];
+                if (discardCard) {
+                    player.hand = player.hand.filter(c => c.id !== discardCard.id);
+                    this.discardPile.push(discardCard);
+                    this.heal(playerIdx, 1);
+                    this.log(`${player.hero.name}发动【青囊】，弃【${discardCard.name}】回复1点体力`, 'ai');
+                    this.render();
+                }
+            }
+        } else {
+            // 玩家青囊：选一张牌弃置，治疗对方（1v1中其他角色为对方）
+            this.log(`请选择一张手牌弃置（青囊）`, 'system');
+            this.qingnangMode = true;
+            this.render();
+            await new Promise(resolve => { this.qingnangResolver = resolve; });
+            this.qingnangMode = false;
+        }
+    },
+
+    // 玩家确认青囊弃牌
+    confirmQingnang(card) {
+        const player = this.players[0];
+        player.hand = player.hand.filter(c => c.id !== card.id);
+        this.discardPile.push(card);
+        // 1v1中目标为对方
+        const targetIdx = 1;
+        if (this.players[targetIdx].hp < this.players[targetIdx].maxHp) {
+            this.heal(targetIdx, 1);
+            this.log(`你发动【青囊】，弃【${card.name}】，${this.players[targetIdx].hero.name}回复1点体力`, 'player');
+        } else {
+            this.log(`你发动【青囊】，弃【${card.name}】，但对方已满血`, 'system');
+        }
+        this.qingnangMode = false;
+        if (this.qingnangResolver) {
+            const r = this.qingnangResolver;
+            this.qingnangResolver = null;
+            r();
+        }
+        this.render();
+    },
+
+    // ===== 结姻（孙尚香）=====
+    async executeJieyin(playerIdx) {
+        const player = this.players[playerIdx];
+        this.hasUsedJieyinThisTurn = true;
+        this.sayHeroLine(playerIdx, 'skill');
+        if (player.isAI) {
+            // AI结姻：手牌充足且残血时使用
+            if (player.hp < player.maxHp && player.hand.length >= 3) {
+                const toDiscard = AI.chooseDiscard(this, 2);
+                if (toDiscard.length >= 2) {
+                    toDiscard.forEach(c => {
+                        player.hand = player.hand.filter(h => h.id !== c.id);
+                        this.discardPile.push(c);
+                    });
+                    this.heal(playerIdx, 1);
+                    this.heal(playerIdx === 0 ? 1 : 0, 1);
+                    this.log(`${player.hero.name}发动【结姻】，双方各回复1点体力`, 'ai');
+                    this.render();
+                }
+            }
+        } else {
+            // 玩家结姻：选两张手牌弃置
+            if (player.hand.length < 2) {
+                this.log(`手牌不足，无法发动【结姻】`, 'system');
+                this.hasUsedJieyinThisTurn = false;
+                return;
+            }
+            this.log(`请选择两张手牌弃置（结姻）`, 'system');
+            this.jieyinMode = true;
+            this.jieyinCards = [];
+            this.render();
+            await new Promise(resolve => { this.jieyinResolver = resolve; });
+            this.jieyinMode = false;
+        }
+    },
+
+    // 玩家确认结姻选牌
+    confirmJieyin() {
+        if (this.jieyinCards.length < 2) {
+            this.log(`请选择两张牌`, 'system');
+            return;
+        }
+        const player = this.players[0];
+        this.jieyinCards.forEach(c => {
+            player.hand = player.hand.filter(h => h.id !== c.id);
+            this.discardPile.push(c);
+        });
+        // 双方各回复1点
+        if (player.hp < player.maxHp) {
+            this.heal(0, 1);
+        }
+        if (this.players[1].hp < this.players[1].maxHp) {
+            this.heal(1, 1);
+        }
+        this.log(`你发动【结姻】，双方各回复1点体力`, 'player');
+        this.jieyinCards = [];
+        this.jieyinMode = false;
+        if (this.jieyinResolver) {
+            const r = this.jieyinResolver;
+            this.jieyinResolver = null;
+            r();
+        }
+        this.render();
+    },
+
     // 询问玩家是否使用反间给的牌
     askPlayerFanjianChoice(card) {
         return new Promise((resolve) => {
@@ -1205,6 +1521,22 @@ const Game = {
             }
             return;
         }
+        // 青囊模式：选一张牌弃置
+        if (this.qingnangMode) {
+            this.confirmQingnang(card);
+            return;
+        }
+        // 结姻模式：选两张牌弃置
+        if (this.jieyinMode) {
+            const idx = this.jieyinCards.findIndex(c => c.id === card.id);
+            if (idx >= 0) {
+                this.jieyinCards.splice(idx, 1);
+            } else {
+                this.jieyinCards.push(card);
+            }
+            this.render();
+            return;
+        }
         if (this.processing) return;
         if (this.currentPlayer !== 0) return;
         
@@ -1234,7 +1566,14 @@ const Game = {
         }
         if (card.type === 'trick' && card.defKey !== 'wuxiekeji') {
             // 锦囊牌基本都能用（无懈可击除外，它是响应牌）
-            results.push({ as: card.defKey, skill: null });
+            // 谦逊（陆逊）：不能成为乐不思蜀目标
+            if (card.defKey === 'lebusishu' && hasSkill(this.players[1].hero, '谦逊')) {
+                // 对方有谦逊，乐不思蜀不可用
+            } else if (card.isRed === false && hasSkill(this.players[1].hero, '帷幕')) {
+                // 帷幕（贾诏）：不能成为黑色锦囊牌目标
+            } else {
+                results.push({ as: card.defKey, skill: null });
+            }
         }
         if (card.type === 'equipment') {
             results.push({ as: card.defKey, skill: null });
@@ -1382,7 +1721,9 @@ const Game = {
             this.log(`判定结果：${judgeCard.suit}${judgeCard.number}（${judgeCard.isRed ? '红色' : '黑色'}）`, 'system');
             this.render();
             await this.delay(600);
-            if (judgeCard.isRed) {
+            // 天妒/鬼才处理
+            const finalJudgeCard = await this.processJudgeCard(sourceIdx, judgeCard);
+            if (finalJudgeCard.isRed) {
                 this.log(`判定为红色，【铁骑】生效，此杀不可闪避！`, 'system');
                 this.render();
                 await this.delay(400);
@@ -1977,7 +2318,10 @@ const Game = {
         this.render();
         await this.delay(1000);
         
-        if (judgeCard.suit === SUIT.HEART) {
+        // 天妒/鬼才处理
+        const finalJudgeCard = await this.processJudgeCard(playerIdx, judgeCard);
+        
+        if (finalJudgeCard.suit === SUIT.HEART) {
             this.log(`判定为红桃，乐不思蜀失效！`, 'system');
             this.render();
             await this.delay(800);
@@ -2330,6 +2674,31 @@ const Game = {
             this.render();
             await this.dealDamage(sourceIdx, targetIdx, null);
         }
+
+        // 节命（荀彧）：受到伤害后令一名角色摸至体力上限
+        if (hasSkill(target.hero, '节命')) {
+            this.log(`${target.hero.name}发动【节命】`, targetIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(targetIdx, 'skill');
+            // 1v1简化：选择手牌最少的角色
+            const targets = [0, 1];
+            let bestIdx = targetIdx;
+            let bestDiff = -1;
+            for (const idx of targets) {
+                const p = this.players[idx];
+                const diff = p.maxHp - p.hand.length;
+                if (diff > bestDiff && diff > 0) {
+                    bestDiff = diff;
+                    bestIdx = idx;
+                }
+            }
+            if (bestDiff > 0) {
+                const p = this.players[bestIdx];
+                const drawCount = p.maxHp - p.hand.length;
+                for (let i = 0; i < drawCount; i++) p.hand.push(this.drawCard());
+                this.log(`${p.hero.name}摸至体力上限（+${drawCount}张）`, bestIdx === 0 ? 'player' : 'ai');
+            }
+            this.render();
+        }
     },
 
     async triggerGanglie(targetIdx, sourceIdx) {
@@ -2458,6 +2827,8 @@ const Game = {
             const player = this.players[0];
             const shans = player.hand.filter(c => c.defKey === 'shan');
             const shas = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'sha') : [];
+            // 倾国（甄姬）：黑色手牌当闪
+            const qingguoCards = hasSkill(player.hero, '倾国') ? player.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
             
             const promptText = needCount > 1 
                 ? `对方使用了【杀】（无双），你需要出${needCount}张【闪】` 
@@ -2467,7 +2838,7 @@ const Game = {
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
             
-            [...shans, ...shas].forEach(card => {
+            [...shans, ...shas, ...qingguoCards].forEach(card => {
                 const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
@@ -2484,6 +2855,8 @@ const Game = {
         if (this.responseMode === 'dodge') {
             if (card.defKey === 'shan') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
+            // 倾国（甄姬）：黑色手牌当闪
+            if (hasSkill(player.hero, '倾国') && !card.isRed) return true;
             return false;
         }
         if (this.responseMode === 'duel') {
@@ -2497,6 +2870,8 @@ const Game = {
         if (this.responseMode === 'wanjian') {
             if (card.defKey === 'shan') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
+            // 倾国（甄姬）：黑色手牌当闪
+            if (hasSkill(player.hero, '倾国') && !card.isRed) return true;
             return false;
         }
         if (this.responseMode === 'peach') {
@@ -2727,12 +3102,14 @@ const Game = {
             const player = this.players[0];
             const shans = player.hand.filter(c => c.defKey === 'shan');
             const shas = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'sha') : [];
+            // 倾国（甄姬）：黑色手牌当闪
+            const qingguoCards = hasSkill(player.hero, '倾国') ? player.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
             
             document.getElementById('response-prompt').textContent = '万箭齐发！是否出【闪】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
             
-            [...shans, ...shas].forEach(card => {
+            [...shans, ...shas, ...qingguoCards].forEach(card => {
                 const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
@@ -3016,13 +3393,22 @@ const Game = {
         
         player.hand.forEach(card => {
             const playable = this.getCardPlayableAs(0, card);
-            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing;
+            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode;
             const isDiscardable = this.discardMode;
+            // 在青囊/结姻模式下，所有手牌可点击
+            const isSkillSelectable = this.qingnangMode || this.jieyinMode;
             
-            const cardEl = this.createCardElement(card, isPlayable || isDiscardable);
+            const cardEl = this.createCardElement(card, isPlayable || isDiscardable || isSkillSelectable);
             
-            if (isPlayable && !isDiscardable) {
+            if (isPlayable && !isDiscardable && !isSkillSelectable) {
                 cardEl.classList.add('playable');
+            } else if (isSkillSelectable) {
+                cardEl.classList.add('playable');
+                // 结姻模式下已选中的牌高亮
+                if (this.jieyinMode && this.jieyinCards.some(c => c.id === card.id)) {
+                    cardEl.style.borderColor = '#ffd700';
+                    cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
+                }
             } else if (!isPlayable && !isDiscardable && this.currentPlayer === 0 && !this.responseResolver && !this.processing) {
                 cardEl.classList.add('unplayable');
             }
@@ -3101,6 +3487,28 @@ const Game = {
                 });
                 actionBar.appendChild(btn);
             }
+
+            // 青囊（华佗）
+            if (hasSkill(player.hero, '青囊') && !this.hasUsedQingnangThisTurn && player.hand.length > 0) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '青囊';
+                btn.addEventListener('click', () => {
+                    this.executeQingnang(0);
+                });
+                actionBar.appendChild(btn);
+            }
+
+            // 结姻（孙尚香）
+            if (hasSkill(player.hero, '结姻') && !this.hasUsedJieyinThisTurn && player.hand.length >= 2) {
+                const btn = document.createElement('button');
+                btn.className = 'action-btn green';
+                btn.textContent = '结姻';
+                btn.addEventListener('click', () => {
+                    this.executeJieyin(0);
+                });
+                actionBar.appendChild(btn);
+            }
             
             // 结束回合
             const endBtn = document.createElement('button');
@@ -3173,6 +3581,65 @@ const Game = {
             info.className = 'action-info-box';
             info.textContent = `反间：请选择一张手牌给对手`;
             actionBar.appendChild(info);
+        }
+
+        if (this.qingnangMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `青囊：请选择一张手牌弃置`;
+            actionBar.appendChild(info);
+        }
+
+        if (this.jieyinMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `结姻：已选${this.jieyinCards.length}/2张`;
+            actionBar.appendChild(info);
+            if (this.jieyinCards.length >= 2) {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'action-btn green';
+                confirmBtn.textContent = '确认结姻';
+                confirmBtn.addEventListener('click', () => {
+                    this.confirmJieyin();
+                });
+                actionBar.appendChild(confirmBtn);
+            }
+        }
+
+        if (this.guanxingMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `观星：点击选择置于牌堆顶的牌（已选${this.guanxingSelected ? this.guanxingSelected.length : 0}张）`;
+            actionBar.appendChild(info);
+            // 显示观星卡牌
+            if (this.guanxingCards) {
+                this.guanxingCards.forEach((card, i) => {
+                    const cardEl = this.createCardElement(card, true);
+                    const isSelected = this.guanxingSelected && this.guanxingSelected.includes(i);
+                    if (isSelected) {
+                        cardEl.style.borderColor = '#ffd700';
+                        cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
+                    }
+                    cardEl.addEventListener('click', () => {
+                        if (!this.guanxingSelected) this.guanxingSelected = [];
+                        const idx = this.guanxingSelected.indexOf(i);
+                        if (idx >= 0) {
+                            this.guanxingSelected.splice(idx, 1);
+                        } else {
+                            this.guanxingSelected.push(i);
+                        }
+                        this.render();
+                    });
+                    actionBar.appendChild(cardEl);
+                });
+            }
+            const confirmBtn = document.createElement('button');
+            confirmBtn.className = 'action-btn green';
+            confirmBtn.textContent = '确认观星';
+            confirmBtn.addEventListener('click', () => {
+                this.confirmGuanxing(this.guanxingSelected || []);
+            });
+            actionBar.appendChild(confirmBtn);
         }
     },
 

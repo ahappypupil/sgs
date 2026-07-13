@@ -32,6 +32,20 @@ const MultiAI = {
             }
         }
 
+        // 优先级2.5: 青囊技能（华佗）- 残血时使用
+        if (hasSkill(ai.hero, '青囊') && !game.hasUsedQingnangThisTurn && ai.hp < ai.maxHp && ai.hand.length > 1) {
+            if (Math.random() < 0.5) {
+                return { action: 'skill_qingnang' };
+            }
+        }
+
+        // 优先级2.6: 结姻技能（孙尚香）- 残血且手牌充足时使用
+        if (hasSkill(ai.hero, '结姻') && !game.hasUsedJieyinThisTurn && ai.hp < ai.maxHp && ai.hand.length >= 3) {
+            if (Math.random() < 0.5) {
+                return { action: 'skill_jieyin' };
+            }
+        }
+
         // 优先级3: 装备
         const equip = this.findEquipCard(ai.hand);
         if (equip && !this.hasEquipType(ai, equip.equipType)) {
@@ -51,14 +65,14 @@ const MultiAI = {
         // 优先级6: 顺手牵羊/过河拆桥
         const shunshou = this.findCard(ai.hand, 'shunshouqiannyang');
         if (shunshou) {
-            const targetWithCards = aliveOpponents.find(o => o.hand.length > 0 || this.hasAnyEquip(o));
+            const targetWithCards = aliveOpponents.find(o => (o.hand.length > 0 || this.hasAnyEquip(o)) && !(hasSkill(o.hero, '帷幕') && !shunshou.isRed));
             if (targetWithCards) {
                 return { action: 'play', card: shunshou, target: targetWithCards.idx };
             }
         }
         const guohe = this.findCard(ai.hand, 'guohechaiqiao');
         if (guohe) {
-            const targetWithCards = aliveOpponents.find(o => o.hand.length > 0 || this.hasAnyEquip(o));
+            const targetWithCards = aliveOpponents.find(o => (o.hand.length > 0 || this.hasAnyEquip(o)) && !(hasSkill(o.hero, '帷幕') && !guohe.isRed));
             if (targetWithCards) {
                 return { action: 'play', card: guohe, target: targetWithCards.idx };
             }
@@ -72,7 +86,7 @@ const MultiAI = {
                 if (o.hand.length > best.hand.length) return o;
                 return best;
             }, null);
-            if (controlTarget && !controlTarget.lebusishu) {
+            if (controlTarget && !controlTarget.lebusishu && !hasSkill(controlTarget.hero, '谦逊')) {
                 return { action: 'play', card: lebusishu, target: controlTarget.idx };
             }
         }
@@ -80,7 +94,10 @@ const MultiAI = {
         // 优先级8: 火攻
         const huogong = this.findCard(ai.hand, 'huogong');
         if (huogong && ai.hand.length > 1) {
-            return { action: 'play', card: huogong, target: target.idx };
+            // 帷幕（贾诩）：不能成为黑色锦囊牌目标
+            if (!(hasSkill(target.hero, '帷幕') && !huogong.isRed)) {
+                return { action: 'play', card: huogong, target: target.idx };
+            }
         }
 
         // 优先级9: 桃园结义（自己残血时使用）
@@ -109,7 +126,7 @@ const MultiAI = {
 
         // 优先级12: 决斗
         const juedou = this.findCard(ai.hand, 'juedou');
-        if (juedou) {
+        if (juedou && !(hasSkill(target.hero, '帷幕') && !juedou.isRed)) {
             const shaCount = ai.hand.filter(c => c.defKey === 'sha').length;
             if (shaCount >= 2) {
                 // 检查目标是否有空城
@@ -173,7 +190,9 @@ const MultiAI = {
 
         const availableShans = ai.hand.filter(c => c.defKey === 'shan');
         const availableShas = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'sha') : [];
-        const totalAvailable = [...availableShans, ...availableShas];
+        // 倾国（甄姬）：黑色手牌当闪
+        const qingguoCards = hasSkill(ai.hero, '倾国') ? ai.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+        const totalAvailable = [...availableShans, ...availableShas, ...qingguoCards];
 
         if (totalAvailable.length < needCount) {
             if (ai.hp <= 1 && availableShans.length > 0) {
@@ -186,18 +205,18 @@ const MultiAI = {
 
         // 受到伤害会死，一定闪
         if (hpAfterDamage <= 0) {
-            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount) };
+            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount, qingguoCards) };
         }
 
         // HP低时倾向闪
         if (ai.hp <= 2) {
-            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount) };
+            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount, qingguoCards) };
         }
 
         // HP较高时有一定概率闪
         const dodgeProb = 0.5 + (1 - ai.hp / ai.maxHp) * 0.3;
         if (Math.random() < dodgeProb) {
-            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount) };
+            return { dodge: true, cards: this.pickDodgeCards(availableShans, availableShas, needCount, qingguoCards) };
         }
 
         return { dodge: false, cards: [] };
@@ -225,12 +244,14 @@ const MultiAI = {
         const ai = game.players[targetIdx];
         const shans = ai.hand.filter(c => c.defKey === 'shan');
         const shas = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'sha') : [];
-        const total = [...shans, ...shas];
+        // 倾国（甄姬）：黑色手牌当闪
+        const qingguoCards = hasSkill(ai.hero, '倾国') ? ai.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+        const total = [...shans, ...shas, ...qingguoCards];
 
         if (total.length === 0) return { dodge: false, card: null };
-        if (ai.hp <= 2) return { dodge: true, card: shans[0] || shas[0] };
-        if (ai.hand.length > 4) return { dodge: true, card: shans[0] || shas[0] };
-        if (Math.random() < 0.5) return { dodge: true, card: shans[0] || shas[0] };
+        if (ai.hp <= 2) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+        if (ai.hand.length > 4) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+        if (Math.random() < 0.5) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
 
         return { dodge: false, card: null };
     },
@@ -356,7 +377,15 @@ const MultiAI = {
         return hasSkill(player.hero, '咆哮') || (player.equipment.weapon && player.equipment.weapon.defKey === 'zhugecrossbow');
     },
 
-    pickDodgeCards(shans, shas, count) {
+    pickDodgeCards(shans, shas, count, qingguoCards) {
+        const cards = [];
+        for (let i = 0; i < shans.length && cards.length < count; i++) cards.push(shans[i]);
+        for (let i = 0; i < shas.length && cards.length < count; i++) cards.push(shas[i]);
+        if (qingguoCards) {
+            for (let i = 0; i < qingguoCards.length && cards.length < count; i++) cards.push(qingguoCards[i]);
+        }
+        return cards;
+    },
         const cards = [];
         for (let i = 0; i < shans.length && cards.length < count; i++) {
             cards.push(shans[i]);
