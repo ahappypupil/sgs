@@ -159,15 +159,19 @@ Object.assign(MultiGame, {
 
         player.hand.forEach(card => {
             const playable = this.getCardPlayableAs(0, card);
-            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode;
+            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.targetResolver && !this.zhihengMode && !this.lijianMode && !this.fanjianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode;
             const isDiscardable = this.discardMode;
-            const isSkillSelectable = this.qingnangMode || this.jieyinMode;
+            const isSkillSelectable = this.zhihengMode || this.lijianMode || this.fanjianMode || this.qingnangMode || this.jieyinMode;
 
             const cardEl = this.createCardElement(card, isPlayable || isDiscardable || isSkillSelectable);
             if (isPlayable && !isDiscardable && !isSkillSelectable) cardEl.classList.add('playable');
             else if (isSkillSelectable) {
                 cardEl.classList.add('playable');
                 if (this.jieyinMode && this.jieyinCards.some(c => c.id === card.id)) {
+                    cardEl.style.borderColor = '#ffd700';
+                    cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
+                }
+                if (this.zhihengMode && this.zhihengCards.some(c => c.id === card.id)) {
                     cardEl.style.borderColor = '#ffd700';
                     cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
                 }
@@ -253,7 +257,7 @@ Object.assign(MultiGame, {
                 }
             });
             actionBar.appendChild(endBtn);
-        } else if (this.currentPlayer !== 0 && !this.gameOver && this.players[this.currentPlayer] && !this.zhihengMode && !this.lijianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode) {
+        } else if (this.currentPlayer !== 0 && !this.gameOver && this.players[this.currentPlayer] && !this.zhihengMode && !this.lijianMode && !this.fanjianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode) {
             const indicator = document.createElement('span');
             indicator.className = 'action-info-box ai-thinking';
             indicator.textContent = `${this.players[this.currentPlayer].hero.name}思考中`;

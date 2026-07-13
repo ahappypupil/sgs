@@ -634,6 +634,9 @@ const Game = {
         this.hasUsedZhihengThisTurn = false;
         this.hasUsedLijianThisTurn = false;
         this.hasUsedFanjianThisTurn = false;
+        this.hasUsedQingnangThisTurn = false;
+        this.hasUsedJieyinThisTurn = false;
+        this.hasUsedGuanxingThisTurn = false;
         this.processing = false;
         this.log(`你的回合开始`, 'player');
         this.sayHeroLine(0, 'turnStart');
@@ -1010,7 +1013,7 @@ const Game = {
             player.hand = player.hand.filter(c => c.id !== discardCard.id);
             this.discardPile.push(discardCard);
             this.log(`${player.hero.name}发动【离间】，弃置一张牌`, 'ai');
-            this.resolveJuedou(playerIdx, playerIdx === 0 ? 1 : 0, null);
+            await this.resolveJuedou(playerIdx, playerIdx === 0 ? 1 : 0, null);
         } else {
             // 玩家弃一张牌
             this.log(`请选择一张手牌弃置（离间）`, 'system');
@@ -1258,7 +1261,7 @@ const Game = {
         this.hasUsedQingnangThisTurn = true;
         this.sayHeroLine(playerIdx, 'skill');
         if (player.isAI) {
-            // AI青囊：弃一张低价值牌，治疗自己（1v1中只能治对方，但简化为治疗自己如果残血）
+            // AI青囊：弃一张低价值牌，治疗自己
             if (player.hp < player.maxHp) {
                 const discardCard = AI.chooseDiscard(this, 1)[0];
                 if (discardCard) {
@@ -1270,7 +1273,7 @@ const Game = {
                 }
             }
         } else {
-            // 玩家青囊：选一张牌弃置，治疗对方（1v1中其他角色为对方）
+            // 玩家青囊：选一张牌弃置，治疗自己
             this.log(`请选择一张手牌弃置（青囊）`, 'system');
             this.qingnangMode = true;
             this.render();
@@ -1284,13 +1287,13 @@ const Game = {
         const player = this.players[0];
         player.hand = player.hand.filter(c => c.id !== card.id);
         this.discardPile.push(card);
-        // 1v1中目标为对方
-        const targetIdx = 1;
+        // 1v1中治疗自己
+        const targetIdx = 0;
         if (this.players[targetIdx].hp < this.players[targetIdx].maxHp) {
             this.heal(targetIdx, 1);
-            this.log(`你发动【青囊】，弃【${card.name}】，${this.players[targetIdx].hero.name}回复1点体力`, 'player');
+            this.log(`你发动【青囊】，弃【${card.name}】，回复1点体力`, 'player');
         } else {
-            this.log(`你发动【青囊】，弃【${card.name}】，但对方已满血`, 'system');
+            this.log(`你已满血，青囊无效`, 'system');
         }
         this.qingnangMode = false;
         if (this.qingnangResolver) {
@@ -3393,10 +3396,10 @@ const Game = {
         
         player.hand.forEach(card => {
             const playable = this.getCardPlayableAs(0, card);
-            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode;
+            const isPlayable = playable.length > 0 && this.currentPlayer === 0 && !this.responseResolver && !this.discardMode && !this.processing && !this.zhihengMode && !this.lijianMode && !this.fanjianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode;
             const isDiscardable = this.discardMode;
-            // 在青囊/结姻模式下，所有手牌可点击
-            const isSkillSelectable = this.qingnangMode || this.jieyinMode;
+            // 在制衡/离间/反间/青囊/结姻模式下，所有手牌可点击
+            const isSkillSelectable = this.zhihengMode || this.lijianMode || this.fanjianMode || this.qingnangMode || this.jieyinMode;
             
             const cardEl = this.createCardElement(card, isPlayable || isDiscardable || isSkillSelectable);
             
@@ -3406,6 +3409,11 @@ const Game = {
                 cardEl.classList.add('playable');
                 // 结姻模式下已选中的牌高亮
                 if (this.jieyinMode && this.jieyinCards.some(c => c.id === card.id)) {
+                    cardEl.style.borderColor = '#ffd700';
+                    cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
+                }
+                // 制衡模式下已选中的牌高亮
+                if (this.zhihengMode && this.zhihengCards.some(c => c.id === card.id)) {
                     cardEl.style.borderColor = '#ffd700';
                     cardEl.style.boxShadow = '0 0 8px rgba(255,215,0,0.5)';
                 }
@@ -3440,7 +3448,7 @@ const Game = {
         
         // 音乐和语音控制已移到右上角音频控制面板
         
-        if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing && !this.fanjianMode) {
+        if (this.currentPlayer === 0 && !this.gameOver && !this.responseResolver && !this.discardMode && !this.processing && !this.zhihengMode && !this.lijianMode && !this.fanjianMode && !this.qingnangMode && !this.jieyinMode && !this.guanxingMode) {
             // 技能按钮
             const player = this.players[0];
             
@@ -4061,6 +4069,28 @@ const Game = {
         this.ganglieDiscardResolver = null;
         this.fanjianMode = false;
         this.fanjianResolver = null;
+        this.zhihengMode = false;
+        this.zhihengCards = [];
+        this.zhihengResolver = null;
+        this.lijianMode = false;
+        this.lijianResolver = null;
+        this.qingnangMode = false;
+        this.qingnangResolver = null;
+        this.jieyinMode = false;
+        this.jieyinCards = [];
+        this.jieyinResolver = null;
+        this.guanxingMode = false;
+        this.guanxingResolver = null;
+        this.liuliMode = false;
+        this.liuliResolver = null;
+        this.hasSlashedThisTurn = false;
+        this.hasUsedKurouThisTurn = false;
+        this.hasUsedZhihengThisTurn = false;
+        this.hasUsedLijianThisTurn = false;
+        this.hasUsedFanjianThisTurn = false;
+        this.hasUsedQingnangThisTurn = false;
+        this.hasUsedJieyinThisTurn = false;
+        this.hasUsedGuanxingThisTurn = false;
         this.processing = false;
         this.aiRunning = false;
         this.stopBGM();

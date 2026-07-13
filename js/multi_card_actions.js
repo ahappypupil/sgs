@@ -207,7 +207,7 @@ Object.assign(MultiGame, {
             this.discardPile.push(discardCard);
             this.log(`${player.hero.name}发动【离间】，弃置一张牌`, 'ai');
             const targetIdx = this.players.findIndex((p, i) => i !== playerIdx && !p.dead);
-            if (targetIdx >= 0) this.resolveJuedou(playerIdx, targetIdx, null);
+            if (targetIdx >= 0) await this.resolveJuedou(playerIdx, targetIdx, null);
         } else {
             this.log(`请选择一张手牌弃置（离间）`, 'system');
             this.lijianMode = true;

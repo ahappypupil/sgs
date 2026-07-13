@@ -276,13 +276,15 @@ const AI = {
         const ai = game.players[1];
         const shans = ai.hand.filter(c => c.defKey === 'shan');
         const shas = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'sha') : [];
-        const total = [...shans, ...shas];
+        // 倾国（甄姬）：黑色手牌当闪
+        const qingguoCards = hasSkill(ai.hero, '倾国') ? ai.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+        const total = [...shans, ...shas, ...qingguoCards];
         
         if (total.length === 0) return { dodge: false, card: null };
         
-        if (ai.hp <= 2) return { dodge: true, card: shans[0] || shas[0] };
-        if (ai.hand.length > 4) return { dodge: true, card: shans[0] || shas[0] };
-        if (Math.random() < 0.5) return { dodge: true, card: shans[0] || shas[0] };
+        if (ai.hp <= 2) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+        if (ai.hand.length > 4) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+        if (Math.random() < 0.5) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
         
         return { dodge: false, card: null };
     },

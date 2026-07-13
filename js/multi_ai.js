@@ -32,6 +32,30 @@ const MultiAI = {
             }
         }
 
+        // 优先级2.1: 制衡技能（孙权）
+        if (hasSkill(ai.hero, '制衡') && !game.hasUsedZhihengThisTurn && ai.hand.length > 0) {
+            const hasSha = ai.hand.some(c => c.defKey === 'sha');
+            const hasShan = ai.hand.some(c => c.defKey === 'shan');
+            if ((!hasSha || !hasShan) && Math.random() < 0.5) {
+                return { action: 'skill_zhiheng' };
+            }
+        }
+
+        // 优先级2.2: 离间技能（貂蝉）
+        if (hasSkill(ai.hero, '离间') && !game.hasUsedLijianThisTurn && ai.hand.length > 1) {
+            const shaCount = ai.hand.filter(c => c.defKey === 'sha').length;
+            if (shaCount >= 1 && Math.random() < 0.4) {
+                return { action: 'skill_lijian' };
+            }
+        }
+
+        // 优先级2.3: 反间技能（周瑜）
+        if (hasSkill(ai.hero, '反间') && !game.hasUsedFanjianThisTurn && ai.hand.length > 1) {
+            if (Math.random() < 0.4) {
+                return { action: 'skill_fanjian' };
+            }
+        }
+
         // 优先级2.5: 青囊技能（华佗）- 残血时使用
         if (hasSkill(ai.hero, '青囊') && !game.hasUsedQingnangThisTurn && ai.hp < ai.maxHp && ai.hand.length > 1) {
             if (Math.random() < 0.5) {
@@ -386,13 +410,41 @@ const MultiAI = {
         }
         return cards;
     },
-        const cards = [];
-        for (let i = 0; i < shans.length && cards.length < count; i++) {
-            cards.push(shans[i]);
+
+    /**
+     * AI选择反间给出的牌（选最没用的牌）
+     */
+    chooseFanjianCard(game, playerIdx) {
+        const ai = game.players[playerIdx];
+        const equip = ai.hand.find(c => c.type === 'equipment');
+        if (equip) return equip;
+        const trick = ai.hand.find(c => c.type === 'trick' && c.defKey !== 'wushengshengyou');
+        if (trick) return trick;
+        const sha = ai.hand.find(c => c.defKey === 'sha');
+        if (sha && ai.hand.length > 2) return sha;
+        return ai.hand[0];
+    },
+
+    /**
+     * AI决定是否接受反间的牌
+     */
+    decideFanjianResponse(game, playerIdx, card) {
+        const ai = game.players[playerIdx];
+        if (ai.hp <= 1 && (card.defKey === 'tao' || card.defKey === 'sha')) {
+            return 'use';
         }
-        for (let i = 0; i < shas.length && cards.length < count; i++) {
-            cards.push(shas[i]);
+        if (card.defKey === 'sha' && ai.hand.filter(c => c.defKey === 'sha').length < 2) {
+            return 'use';
         }
-        return cards;
+        if (card.defKey === 'tao' && ai.hp < ai.maxHp) {
+            return 'use';
+        }
+        if (card.type === 'equipment') {
+            return 'use';
+        }
+        if (ai.hp > 2) {
+            return 'damage';
+        }
+        return 'damage';
     }
 };
