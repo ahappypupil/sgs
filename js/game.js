@@ -560,7 +560,7 @@ const Game = {
                 hp: playerHero.maxHp,
                 maxHp: playerHero.maxHp,
                 hand: [],
-                equipment: { weapon: null, armor: null, mount: null },
+                equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
                 isAI: false,
                 name: '你',
                 lebusishu: false
@@ -570,7 +570,7 @@ const Game = {
                 hp: aiHero.maxHp,
                 maxHp: aiHero.maxHp,
                 hand: [],
-                equipment: { weapon: null, armor: null, mount: null },
+                equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
                 isAI: true,
                 name: aiHero.name,
                 lebusishu: false
@@ -1892,10 +1892,10 @@ const Game = {
             let hasCards = false;
             
             // 显示装备牌（正面朝上，可选）
-            ['weapon', 'armor', 'mount'].forEach(slot => {
-                if (target.equipment[slot]) {
-                    hasCards = true;
-                    const cardEl = this.createCardElement(target.equipment[slot], true);
+        ['weapon', 'armor', 'mountPlus', 'mountMinus'].forEach(slot => {
+            if (target.equipment[slot]) {
+                hasCards = true;
+                const cardEl = this.createCardElement(target.equipment[slot], true);
                     cardEl.classList.add('playable');
                     cardEl.addEventListener('click', () => {
                         const resolver = this.responseResolver;
@@ -1928,6 +1928,8 @@ const Game = {
             });
             
             if (!hasCards) {
+                this.responseMode = null;
+                this.responseResolver = null;
                 resolve(null);
                 return;
             }
@@ -2148,7 +2150,8 @@ const Game = {
     equipCard(playerIdx, card) {
         const player = this.players[playerIdx];
         const slot = card.equipType === EQUIP_TYPE.WEAPON ? 'weapon' :
-                     card.equipType === EQUIP_TYPE.ARMOR ? 'armor' : 'mount';
+                     card.equipType === EQUIP_TYPE.ARMOR ? 'armor' :
+                     card.equipType === EQUIP_TYPE.MOUNT_PLUS ? 'mountPlus' : 'mountMinus';
         
         // 如果已有装备，弃置旧装备
         if (player.equipment[slot]) {
@@ -2179,7 +2182,7 @@ const Game = {
     },
 
     getEquipName(slot) {
-        return { weapon: '武器', armor: '防具', mount: '坐骑' }[slot];
+        return { weapon: '武器', armor: '防具', mountPlus: '防御马', mountMinus: '攻击马' }[slot];
     },
 
     // ===== 伤害结算 =====
@@ -2235,9 +2238,10 @@ const Game = {
         // 麒麟弓：造成伤害后弃置对方坐骑
         if (sourceIdx >= 0) {
             const source = this.players[sourceIdx];
-            if (source.equipment.weapon && source.equipment.weapon.defKey === 'qilingong' && target.equipment.mount) {
-                const mount = target.equipment.mount;
-                target.equipment.mount = null;
+            if (source.equipment.weapon && source.equipment.weapon.defKey === 'qilingong' && (target.equipment.mountPlus || target.equipment.mountMinus)) {
+                const mountSlot = target.equipment.mountMinus ? 'mountMinus' : 'mountPlus';
+                const mount = target.equipment[mountSlot];
+                target.equipment[mountSlot] = null;
                 this.discardPile.push(mount);
                 this.log(`${source.hero.name}发动【麒麟弓】，弃置了${target.hero.name}的【${mount.name}】`, sourceIdx === 0 ? 'player' : 'ai');
             }
@@ -2966,7 +2970,7 @@ const Game = {
         // 装备
         const equipDiv = document.getElementById(`${prefix}-equip`);
         equipDiv.innerHTML = '';
-        ['weapon', 'armor', 'mount'].forEach(slot => {
+        ['weapon', 'armor', 'mountPlus', 'mountMinus'].forEach(slot => {
             const slotDiv = document.createElement('div');
             slotDiv.className = 'equip-slot';
             const equip = player.equipment[slot];
@@ -2975,7 +2979,7 @@ const Game = {
                 slotDiv.textContent = equip.short;
                 slotDiv.title = equip.name + '：' + equip.desc;
             } else {
-                slotDiv.textContent = { weapon: '武器', armor: '防具', mount: '坐骑' }[slot];
+                slotDiv.textContent = { weapon: '武器', armor: '防具', mountPlus: '+马', mountMinus: '-马' }[slot];
             }
             equipDiv.appendChild(slotDiv);
         });

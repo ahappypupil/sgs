@@ -814,9 +814,10 @@ Object.assign(MultiGame, {
         // 麒麟弓
         if (sourceIdx >= 0) {
             const source = this.players[sourceIdx];
-            if (source.equipment.weapon && source.equipment.weapon.defKey === 'qilingong' && target.equipment.mount) {
-                const mount = target.equipment.mount;
-                target.equipment.mount = null;
+            if (source.equipment.weapon && source.equipment.weapon.defKey === 'qilingong' && (target.equipment.mountPlus || target.equipment.mountMinus)) {
+                const mountSlot = target.equipment.mountMinus ? 'mountMinus' : 'mountPlus';
+                const mount = target.equipment[mountSlot];
+                target.equipment[mountSlot] = null;
                 this.discardPile.push(mount);
                 this.log(`${source.hero.name}发动【麒麟弓】，弃置了${target.hero.name}的【${mount.name}】`, sourceIdx === 0 ? 'player' : 'ai');
             }

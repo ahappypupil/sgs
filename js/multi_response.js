@@ -266,7 +266,7 @@ Object.assign(MultiGame, {
             container.innerHTML = '';
 
             let hasCards = false;
-            ['weapon', 'armor', 'mount'].forEach(slot => {
+            ['weapon', 'armor', 'mountPlus', 'mountMinus'].forEach(slot => {
                 if (target.equipment[slot]) {
                     hasCards = true;
                     const cardEl = this.createCardElement(target.equipment[slot], true);
@@ -300,7 +300,7 @@ Object.assign(MultiGame, {
                 container.appendChild(cardBack);
             });
 
-            if (!hasCards) { resolve(null); return; }
+            if (!hasCards) { this.responseMode = null; this.responseResolver = null; resolve(null); return; }
 
             document.getElementById('response-cancel').style.display = 'none';
             document.getElementById('response-panel').classList.remove('hidden');

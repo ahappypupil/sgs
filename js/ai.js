@@ -347,7 +347,8 @@ const AI = {
         // 其次拆防具
         if (player.equipment.armor) return { type: 'equip', slot: 'armor' };
         // 再拆坐骑
-        if (player.equipment.mount) return { type: 'equip', slot: 'mount' };
+        if (player.equipment.mountMinus) return { type: 'equip', slot: 'mountMinus' };
+        if (player.equipment.mountPlus) return { type: 'equip', slot: 'mountPlus' };
         
         // 拆手牌
         if (player.hand.length > 0) return { type: 'hand', index: Math.floor(Math.random() * player.hand.length) };
@@ -444,12 +445,13 @@ const AI = {
         if (!player.equipment) return false;
         if (equipType === 'weapon') return !!player.equipment.weapon;
         if (equipType === 'armor') return !!player.equipment.armor;
-        if (equipType === 'mount') return !!player.equipment.mount;
+        if (equipType === 'mountPlus') return !!player.equipment.mountPlus;
+        if (equipType === 'mountMinus') return !!player.equipment.mountMinus;
         return false;
     },
 
     hasAnyEquip(player) {
-        return player.equipment.weapon || player.equipment.armor || player.equipment.mount;
+        return player.equipment.weapon || player.equipment.armor || player.equipment.mountPlus || player.equipment.mountMinus;
     },
 
     canSlashUnlimited(player) {

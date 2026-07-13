@@ -22,9 +22,10 @@ function suitColor(suit) {
 
 // 装备子类型
 const EQUIP_TYPE = {
-    WEAPON: 'weapon',    // 武器
-    ARMOR: 'armor',      // 防具
-    MOUNT: 'mount'       // 坐骑
+    WEAPON: 'weapon',      // 武器
+    ARMOR: 'armor',        // 防具
+    MOUNT_PLUS: 'mountPlus',   // 防御马（+1马）
+    MOUNT_MINUS: 'mountMinus'  // 攻击马（-1马）
 };
 
 // 卡牌定义模板
@@ -179,28 +180,28 @@ const CARD_DEFS = {
     chitu: {
         name: '赤兔',
         type: CARD_TYPE.EQUIPMENT,
-        equipType: EQUIP_TYPE.MOUNT,
-        desc: '坐骑：其他角色与你的距离+1。',
+        equipType: EQUIP_TYPE.MOUNT_MINUS,
+        desc: '坐骑：你与其他角色的距离-1。',
         short: '赤兔'
     },
     dilu: {
         name: '的卢',
         type: CARD_TYPE.EQUIPMENT,
-        equipType: EQUIP_TYPE.MOUNT,
+        equipType: EQUIP_TYPE.MOUNT_PLUS,
         desc: '坐骑：其他角色与你的距离+1。',
         short: '的卢'
     },
     zhaohuangfeidian: {
         name: '爪黄飞电',
         type: CARD_TYPE.EQUIPMENT,
-        equipType: EQUIP_TYPE.MOUNT,
+        equipType: EQUIP_TYPE.MOUNT_MINUS,
         desc: '坐骑：你与其他角色的距离-1。',
         short: '爪黄'
     },
     jueying: {
         name: '绝影',
         type: CARD_TYPE.EQUIPMENT,
-        equipType: EQUIP_TYPE.MOUNT,
+        equipType: EQUIP_TYPE.MOUNT_PLUS,
         desc: '坐骑：其他角色与你的距离+1。',
         short: '绝影'
     }

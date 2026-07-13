@@ -288,7 +288,7 @@ const MultiGame = {
         // 玩家
         this.players.push({
             hero: playerHero, hp: playerHero.maxHp, maxHp: playerHero.maxHp,
-            hand: [], equipment: { weapon: null, armor: null, mount: null },
+            hand: [], equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
             isAI: false, name: '你', lebusishu: false, dead: false, idx: 0
         });
         // AI玩家
@@ -296,7 +296,7 @@ const MultiGame = {
             const aiHero = shuffled[i - 1];
             this.players.push({
                 hero: aiHero, hp: aiHero.maxHp, maxHp: aiHero.maxHp,
-                hand: [], equipment: { weapon: null, armor: null, mount: null },
+                hand: [], equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
                 isAI: true, name: aiHero.name, lebusishu: false, dead: false, idx: i
             });
         }
@@ -682,7 +682,7 @@ const MultiGame = {
 
     equipCard(playerIdx, card) {
         const player = this.players[playerIdx];
-        const slot = card.equipType === EQUIP_TYPE.WEAPON ? 'weapon' : card.equipType === EQUIP_TYPE.ARMOR ? 'armor' : 'mount';
+        const slot = card.equipType === EQUIP_TYPE.WEAPON ? 'weapon' : card.equipType === EQUIP_TYPE.ARMOR ? 'armor' : card.equipType === EQUIP_TYPE.MOUNT_PLUS ? 'mountPlus' : 'mountMinus';
         if (player.equipment[slot]) {
             this.discardPile.push(player.equipment[slot]);
             // 枭姬（孙尚香）：失去装备后摸两张牌

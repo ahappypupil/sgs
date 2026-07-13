@@ -36,8 +36,8 @@ Object.assign(MultiGame, {
             }
 
             let equipHtml = '';
-            ['weapon', 'armor', 'mount'].forEach(slot => {
-                const labels = { weapon: '武器', armor: '防具', mount: '坐骑' };
+            ['weapon', 'armor', 'mountPlus', 'mountMinus'].forEach(slot => {
+                const labels = { weapon: '武器', armor: '防具', mountPlus: '+马', mountMinus: '-马' };
                 if (p.equipment[slot]) {
                     equipHtml += `<span class="opponent-equip-slot equipped" title="${p.equipment[slot].name}">${p.equipment[slot].short}</span>`;
                 } else {
@@ -127,7 +127,7 @@ Object.assign(MultiGame, {
         // 装备
         const equipDiv = document.getElementById('player-equip');
         equipDiv.innerHTML = '';
-        ['weapon', 'armor', 'mount'].forEach(slot => {
+        ['weapon', 'armor', 'mountPlus', 'mountMinus'].forEach(slot => {
             const slotDiv = document.createElement('div');
             slotDiv.className = 'equip-slot';
             const equip = player.equipment[slot];
@@ -136,7 +136,7 @@ Object.assign(MultiGame, {
                 slotDiv.textContent = equip.short;
                 slotDiv.title = equip.name + '：' + equip.desc;
             } else {
-                slotDiv.textContent = { weapon: '武器', armor: '防具', mount: '坐骑' }[slot];
+                slotDiv.textContent = { weapon: '武器', armor: '防具', mountPlus: '+马', mountMinus: '-马' }[slot];
             }
             equipDiv.appendChild(slotDiv);
         });

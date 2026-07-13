@@ -290,7 +290,8 @@ const MultiAI = {
         // 优先拆装备
         if (targetPlayer.equipment.weapon) return { type: 'equip', slot: 'weapon' };
         if (targetPlayer.equipment.armor) return { type: 'equip', slot: 'armor' };
-        if (targetPlayer.equipment.mount) return { type: 'equip', slot: 'mount' };
+        if (targetPlayer.equipment.mountMinus) return { type: 'equip', slot: 'mountMinus' };
+        if (targetPlayer.equipment.mountPlus) return { type: 'equip', slot: 'mountPlus' };
         if (targetPlayer.hand.length > 0) return { type: 'hand', index: Math.floor(Math.random() * targetPlayer.hand.length) };
         return null;
     },
@@ -342,12 +343,13 @@ const MultiAI = {
         if (!player.equipment) return false;
         if (equipType === 'weapon') return !!player.equipment.weapon;
         if (equipType === 'armor') return !!player.equipment.armor;
-        if (equipType === 'mount') return !!player.equipment.mount;
+        if (equipType === 'mountPlus') return !!player.equipment.mountPlus;
+        if (equipType === 'mountMinus') return !!player.equipment.mountMinus;
         return false;
     },
 
     hasAnyEquip(player) {
-        return player.equipment.weapon || player.equipment.armor || player.equipment.mount;
+        return player.equipment.weapon || player.equipment.armor || player.equipment.mountPlus || player.equipment.mountMinus;
     },
 
     canSlashUnlimited(player) {
