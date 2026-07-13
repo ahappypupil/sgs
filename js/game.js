@@ -3722,20 +3722,68 @@ const Game = {
     // ===== 日志 =====
     log(msg, type) {
         const content = document.getElementById('log-content');
+        if (!content) return;
         const entry = document.createElement('div');
         entry.className = 'log-entry ' + (type || '');
-        entry.textContent = msg;
+
+        // 回合开始/结束用分割线样式
+        if (msg.includes('回合开始') || msg.includes('回合结束')) {
+            entry.classList.add('log-turn');
+        }
+
+        entry.innerHTML = this.formatLogMsg(msg, type);
         content.insertBefore(entry, content.firstChild);
-        
+
         // 限制日志数量
         while (content.children.length > 30) {
             content.removeChild(content.lastChild);
         }
-        
+
         // 语音朗读（如果刚朗读了武将台词则跳过，避免互相取消）
         if (!this._heroLineSpoken) {
             this.speak(msg);
         }
+    },
+
+    // 富文本格式化日志消息
+    formatLogMsg(msg, type) {
+        // 先转义 HTML 特殊字符
+        let html = msg.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // 将【卡牌名/技能名】包裹为高亮徽章
+        html = html.replace(/【([^】]+)】/g, '<span class="log-card">【$1】</span>');
+
+        // 根据内容添加动作图标
+        let icon = '';
+        if (type === 'system') {
+            icon = '<span class="log-icon icon-sys">◆</span>';
+        } else if (msg.includes('回合开始')) {
+            icon = '<span class="log-icon icon-turn">⟫</span>';
+        } else if (msg.includes('回合结束')) {
+            icon = '<span class="log-icon icon-turn">⟪</span>';
+        } else if (msg.includes('濒死') || msg.includes('阵亡')) {
+            icon = '<span class="log-icon icon-death">☠</span>';
+        } else if (msg.includes('伤害') || msg.includes('流失') || msg.includes('受到')) {
+            icon = '<span class="log-icon icon-dmg">✸</span>';
+        } else if (msg.includes('回复') || msg.includes('治疗') || msg.includes('自救')) {
+            icon = '<span class="log-icon icon-heal">✚</span>';
+        } else if (msg.includes('发动【')) {
+            icon = '<span class="log-icon icon-skill">✦</span>';
+        } else if (msg.includes('装备')) {
+            icon = '<span class="log-icon icon-equip">⚙</span>';
+        } else if (msg.includes('杀') && !msg.includes('没有') || msg.includes('决斗') || msg.includes('南蛮') || msg.includes('万箭') || msg.includes('火攻')) {
+            icon = '<span class="log-icon icon-atk">⚔</span>';
+        } else if (msg.includes('闪') && !msg.includes('没有') && !msg.includes('不出')) {
+            icon = '<span class="log-icon icon-def">🛡</span>';
+        } else if (msg.includes('摸了') || msg.includes('摸')) {
+            icon = '<span class="log-icon icon-draw">✧</span>';
+        } else if (msg.includes('弃')) {
+            icon = '<span class="log-icon icon-discard">✕</span>';
+        } else if (msg.includes('使用【') || msg.includes('出【')) {
+            icon = '<span class="log-icon icon-play">▸</span>';
+        }
+
+        return icon + ' ' + html;
     },
 
     // ===== 语音朗读 =====

@@ -838,7 +838,7 @@ body {
 #log-content {
     display: flex;
     flex-direction: column-reverse;
-    gap: 2px;
+    gap: 3px;
 }
 
 .log-entry {
@@ -846,12 +846,13 @@ body {
     color: #ccc;
     padding: 4px 10px;
     border-radius: 6px;
-    animation: logFadeIn 0.3s ease;
-    margin-bottom: 2px;
+    animation: logSlideIn 0.35s cubic-bezier(0.2, 0.6, 0.3, 1);
+    margin-bottom: 1px;
     text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
     display: inline-block;
     width: auto;
     align-self: flex-start;
+    line-height: 1.5;
 }
 
 /* 有背景图时，日志条目显示背景框 - 使用CSS变量 */
@@ -897,9 +898,59 @@ body {
     border-color: rgba(102, 255, 102, 0.4);
 }
 
-@keyframes logFadeIn {
-    from { opacity: 0; transform: translateY(-10px); }
-    to { opacity: 1; transform: translateY(0); }
+@keyframes logSlideIn {
+    from { opacity: 0; transform: translateX(-8px); }
+    to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ===== 日志富文本样式 ===== */
+
+/* 卡牌/技能名高亮徽章 */
+.log-entry .log-card {
+    display: inline;
+    color: #ffe082;
+    font-weight: 600;
+    text-shadow: 0 0 4px rgba(255, 180, 0, 0.4);
+}
+
+/* 动作图标 */
+.log-entry .log-icon {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    font-size: 12px;
+    margin-right: 1px;
+    opacity: 0.85;
+}
+.log-entry .icon-sys    { color: #ffd700; }
+.log-entry .icon-turn   { color: #b0b0b0; font-size: 11px; }
+.log-entry .icon-skill  { color: #ce93d8; }
+.log-entry .icon-atk    { color: #ef5350; }
+.log-entry .icon-def    { color: #66bb6a; font-size: 11px; }
+.log-entry .icon-heal   { color: #66ff66; }
+.log-entry .icon-dmg    { color: #ff6666; }
+.log-entry .icon-death  { color: #999; }
+.log-entry .icon-equip  { color: #90caf9; font-size: 11px; }
+.log-entry .icon-draw   { color: #fff59d; }
+.log-entry .icon-discard { color: #ffab91; }
+.log-entry .icon-play   { color: #80cbc4; }
+
+/* 回合分割线 */
+.log-entry.log-turn {
+    width: 100% !important;
+    border-top: 1px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    border-left: none;
+    border-right: none;
+    border-radius: 0;
+    padding: 5px 10px;
+    margin: 4px 0 2px;
+    font-size: 12px;
+    opacity: 0.9;
+    text-align: center;
+}
+.battle-log:not(.with-bg) .log-entry.log-turn {
+    background: rgba(255, 255, 255, 0.04);
 }
 
 /* 日志样式设置面板 */
