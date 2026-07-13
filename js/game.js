@@ -51,11 +51,17 @@ const Game = {
     _ttsUnlocked: false,
     _voices: [],
     _ttsKeepAlive: null,
+    _isTouchDevice: false,
+    _tooltipPressTimer: null,
+    _tooltipAutoHide: null,
     
     // ===== 初始化 =====
     init() {
         this.renderHeroList();
         this.setupEventListeners();
+        
+        // 检测触屏设备
+        this._isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches || 'ontouchstart' in window;
         
         // 预加载语音列表（部分浏览器需要异步加载）
         if (window.speechSynthesis) {
@@ -520,9 +526,7 @@ const Game = {
             this.startGame();
         });
             // 浮动简介
-            card.addEventListener('mouseenter', (e) => this.showHeroProfile(hero, e));
-            card.addEventListener('mouseleave', () => this.hideHeroProfile());
-            card.addEventListener('mousemove', (e) => this.moveHeroProfile(e));
+            this._bindTooltip(card, (e) => this.showHeroProfile(hero, e), () => this.hideHeroProfile());
             container.appendChild(card);
         });
     },
@@ -559,10 +563,11 @@ const Game = {
             </div>
         `;
         profile.classList.remove('hidden');
-        this.moveHeroProfile(e);
+        if (e) this.moveHeroProfile(e);
     },
 
     moveHeroProfile(e) {
+        if (this._isTouchDevice) return;
         const profile = document.getElementById('hero-profile');
         if (profile.classList.contains('hidden')) return;
         
@@ -583,6 +588,8 @@ const Game = {
 
     hideHeroProfile() {
         document.getElementById('hero-profile').classList.add('hidden');
+        if (this._tooltipAutoHide) { clearTimeout(this._tooltipAutoHide); this._tooltipAutoHide = null; }
+        if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
     },
 
     // ===== 开始游戏 =====
@@ -3354,9 +3361,9 @@ const Game = {
         `;
         
         // 头像悬停展示武将技能详情
-        avatar.onmouseenter = (e) => this.showHeroTooltip(player.hero, e);
-        avatar.onmouseleave = () => this.hideTooltip();
-        avatar.onmousemove = (e) => this.moveTooltip(e);
+        this._bindTooltip(avatar, (e) => {
+            this.showHeroTooltip(player.hero, e);
+        });
         
         // 名字
         document.getElementById(`${prefix}-name`).textContent = player.hero.name;
@@ -3452,9 +3459,15 @@ const Game = {
             }
             
             cardEl.addEventListener('click', () => this.onPlayerCardClick(card));
-            cardEl.addEventListener('mouseenter', (e) => this.showTooltip(card, e));
-            cardEl.addEventListener('mouseleave', () => this.hideTooltip());
-            cardEl.addEventListener('mousemove', (e) => this.moveTooltip(e));
+            this._bindTooltip(cardEl, (e) => {
+                const tooltip = document.getElementById('card-tooltip');
+                tooltip.innerHTML = `
+                    <div class="tooltip-name">${card.name}</div>
+                    <div class="tooltip-desc">${card.desc}</div>
+                `;
+                tooltip.classList.remove('hidden');
+                if (e) this.moveTooltip(e);
+            });
             
             container.appendChild(cardEl);
         });
@@ -4134,7 +4147,7 @@ const Game = {
             <div class="hero-tooltip-skills">${skillsHtml}</div>
         `;
         tooltip.classList.remove('hidden');
-        this.moveTooltip(e);
+        if (e) this.moveTooltip(e);
     },
 
     getSkillTypeName(type) {
@@ -4149,10 +4162,12 @@ const Game = {
             <div class="tooltip-desc">${card.desc}</div>
         `;
         tooltip.classList.remove('hidden');
-        this.moveTooltip(e);
+        if (e) this.moveTooltip(e);
     },
 
     moveTooltip(e) {
+        // 触屏设备由 CSS 固定在顶部，无需 JS 定位
+        if (this._isTouchDevice) return;
         const tooltip = document.getElementById('card-tooltip');
         let x = e.clientX + 15;
         let y = e.clientY + 15;
@@ -4165,6 +4180,36 @@ const Game = {
 
     hideTooltip() {
         document.getElementById('card-tooltip').classList.add('hidden');
+        if (this._tooltipAutoHide) { clearTimeout(this._tooltipAutoHide); this._tooltipAutoHide = null; }
+        if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
+    },
+
+    // 统一绑定 tooltip 事件（兼容鼠标和触屏）
+    _bindTooltip(el, showFn, hideFn) {
+        const hide = hideFn || (() => this.hideTooltip());
+        if (this._isTouchDevice) {
+            // 触屏：长按 500ms 显示，3秒后自动消失
+            el.addEventListener('touchstart', () => {
+                this._tooltipPressTimer = setTimeout(() => {
+                    showFn(null);
+                    // 3秒后自动隐藏
+                    if (this._tooltipAutoHide) clearTimeout(this._tooltipAutoHide);
+                    this._tooltipAutoHide = setTimeout(() => hide(), 3000);
+                }, 500);
+            }, { passive: true });
+            el.addEventListener('touchend', () => {
+                if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
+            });
+            el.addEventListener('touchmove', () => {
+                // 滚动时取消长按
+                if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
+            }, { passive: true });
+        } else {
+            // 鼠标：悬停显示，跟随鼠标
+            el.addEventListener('mouseenter', (e) => showFn(e));
+            el.addEventListener('mouseleave', () => hide());
+            el.addEventListener('mousemove', (e) => showFn(e));
+        }
     },
 
     // ===== 动画 =====

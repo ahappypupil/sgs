@@ -1190,6 +1190,20 @@ body {
     display: none;
 }
 
+/* 触屏设备：tooltip 固定在顶部居中，不挡手牌 */
+@media (hover: none) and (pointer: coarse) {
+    .card-tooltip {
+        position: fixed !important;
+        top: 6px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        max-width: 92vw !important;
+        max-height: 40vh !important;
+        overflow-y: auto !important;
+        z-index: 500 !important;
+    }
+}
+
 .card-tooltip .tooltip-name {
     color: #ffd700;
     font-weight: bold;
@@ -1457,6 +1471,21 @@ body {
 
 .hero-profile.hidden {
     display: none;
+}
+
+/* 触屏设备：浮动简介固定在顶部居中 */
+@media (hover: none) and (pointer: coarse) {
+    .hero-profile {
+        position: fixed !important;
+        top: 6px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: 92vw !important;
+        max-width: 340px !important;
+        max-height: 70vh !important;
+        overflow-y: auto !important;
+        z-index: 500 !important;
+    }
 }
 
 @keyframes profileFadeIn {

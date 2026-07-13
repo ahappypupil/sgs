@@ -49,6 +49,9 @@ const MultiGame = {
     _ttsUnlocked: false,
     _voices: [],
     _ttsKeepAlive: null,
+    _isTouchDevice: false,
+    _tooltipPressTimer: null,
+    _tooltipAutoHide: null,
     logBgColor: 'black',
     logOpacity: 30,
 
@@ -56,6 +59,10 @@ const MultiGame = {
     init() {
         this.renderHeroList();
         this.setupEventListeners();
+
+        // 检测触屏设备
+        this._isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches || 'ontouchstart' in window;
+
         if (window.speechSynthesis) {
             this._voices = window.speechSynthesis.getVoices();
             window.speechSynthesis.onvoiceschanged = () => {
@@ -265,9 +272,7 @@ const MultiGame = {
                 document.getElementById('confirm-hero').disabled = false;
                 this.startGame();
             });
-            card.addEventListener('mouseenter', (e) => this.showHeroProfile(hero, e));
-            card.addEventListener('mouseleave', () => this.hideHeroProfile());
-            card.addEventListener('mousemove', (e) => this.moveHeroProfile(e));
+            this._bindTooltip(card, (e) => this.showHeroProfile(hero, e), () => this.hideHeroProfile());
             container.appendChild(card);
         });
     },
@@ -301,10 +306,11 @@ const MultiGame = {
                 <div class="profile-skills">${skillsHtml}</div>
             </div>`;
         profile.classList.remove('hidden');
-        this.moveHeroProfile(e);
+        if (e) this.moveHeroProfile(e);
     },
 
     moveHeroProfile(e) {
+        if (this._isTouchDevice) return;
         const profile = document.getElementById('hero-profile');
         if (profile.classList.contains('hidden')) return;
         const pw = profile.offsetWidth, ph = profile.offsetHeight;
@@ -318,6 +324,8 @@ const MultiGame = {
 
     hideHeroProfile() {
         document.getElementById('hero-profile').classList.add('hidden');
+        if (this._tooltipAutoHide) { clearTimeout(this._tooltipAutoHide); this._tooltipAutoHide = null; }
+        if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
     },
 
     // ===== 开始游戏 =====
@@ -1093,7 +1101,7 @@ const MultiGame = {
         const tooltip = document.getElementById('card-tooltip');
         tooltip.innerHTML = `<div class="tooltip-name">${card.name}</div><div class="tooltip-desc">${card.desc}</div>`;
         tooltip.classList.remove('hidden');
-        this.moveTooltip(e);
+        if (e) this.moveTooltip(e);
     },
 
     showHeroTooltip(hero, e) {
@@ -1112,10 +1120,11 @@ const MultiGame = {
             </div>
             <div class="hero-tooltip-skills">${skillsHtml}</div>`;
         tooltip.classList.remove('hidden');
-        this.moveTooltip(e);
+        if (e) this.moveTooltip(e);
     },
 
     moveTooltip(e) {
+        if (this._isTouchDevice) return;
         const tooltip = document.getElementById('card-tooltip');
         let x = e.clientX + 15, y = e.clientY + 15;
         const rect = tooltip.getBoundingClientRect();
@@ -1125,7 +1134,35 @@ const MultiGame = {
         tooltip.style.top = y + 'px';
     },
 
-    hideTooltip() { document.getElementById('card-tooltip').classList.add('hidden'); },
+    hideTooltip() {
+        document.getElementById('card-tooltip').classList.add('hidden');
+        if (this._tooltipAutoHide) { clearTimeout(this._tooltipAutoHide); this._tooltipAutoHide = null; }
+        if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
+    },
+
+    // 统一绑定 tooltip 事件（兼容鼠标和触屏）
+    _bindTooltip(el, showFn, hideFn) {
+        const hide = hideFn || (() => this.hideTooltip());
+        if (this._isTouchDevice) {
+            el.addEventListener('touchstart', () => {
+                this._tooltipPressTimer = setTimeout(() => {
+                    showFn(null);
+                    if (this._tooltipAutoHide) clearTimeout(this._tooltipAutoHide);
+                    this._tooltipAutoHide = setTimeout(() => hide(), 3000);
+                }, 500);
+            }, { passive: true });
+            el.addEventListener('touchend', () => {
+                if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
+            });
+            el.addEventListener('touchmove', () => {
+                if (this._tooltipPressTimer) { clearTimeout(this._tooltipPressTimer); this._tooltipPressTimer = null; }
+            }, { passive: true });
+        } else {
+            el.addEventListener('mouseenter', (e) => showFn(e));
+            el.addEventListener('mouseleave', () => hide());
+            el.addEventListener('mousemove', (e) => showFn(e));
+        }
+    },
 
     flashDamage(playerIdx) {
         let area;

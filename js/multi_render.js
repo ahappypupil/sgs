@@ -74,9 +74,9 @@ Object.assign(MultiGame, {
 
             // 悬停显示技能
             const avatar = card.querySelector('.opponent-avatar');
-            avatar.addEventListener('mouseenter', (e) => this.showHeroTooltip(p.hero, e));
-            avatar.addEventListener('mouseleave', () => this.hideTooltip());
-            avatar.addEventListener('mousemove', (e) => this.moveTooltip(e));
+            this._bindTooltip(avatar, (e) => {
+                this.showHeroTooltip(p.hero, e);
+            });
 
             container.appendChild(card);
         }
@@ -95,9 +95,9 @@ Object.assign(MultiGame, {
         avatar.style.backgroundPosition = 'center';
         avatar.innerHTML = `<div class="hero-card-mini"><div class="hero-card-faction-badge" style="background:${factionColor}">${player.hero.faction}</div></div>`;
 
-        avatar.onmouseenter = (e) => this.showHeroTooltip(player.hero, e);
-        avatar.onmouseleave = () => this.hideTooltip();
-        avatar.onmousemove = (e) => this.moveTooltip(e);
+        this._bindTooltip(avatar, (e) => {
+            this.showHeroTooltip(player.hero, e);
+        });
 
         document.getElementById('player-name').textContent = player.hero.name;
         document.getElementById('player-faction').textContent = `${player.hero.faction}势力 · ${player.hero.title}`;
@@ -178,9 +178,9 @@ Object.assign(MultiGame, {
             } else if (!isPlayable && !isDiscardable && this.currentPlayer === 0 && !this.responseResolver && !this.processing && !this.targetResolver) cardEl.classList.add('unplayable');
 
             cardEl.addEventListener('click', () => this.onPlayerCardClick(card));
-            cardEl.addEventListener('mouseenter', (e) => this.showTooltip(card, e));
-            cardEl.addEventListener('mouseleave', () => this.hideTooltip());
-            cardEl.addEventListener('mousemove', (e) => this.moveTooltip(e));
+            this._bindTooltip(cardEl, (e) => {
+                this.showTooltip(card, e);
+            });
             container.appendChild(cardEl);
         });
     },
