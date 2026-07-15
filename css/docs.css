@@ -1,12 +1,21 @@
 /* ===== 文档页通用样式 ===== */
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 80px;
+}
+
 body {
     font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
     background: linear-gradient(135deg, #0d1b2a 0%, #1b2838 30%, #1a3a2a 60%, #2d1b3d 100%);
     color: #e0e0e0;
     min-height: 100vh;
     line-height: 1.8;
+    overflow-y: auto !important;
+    overflow-x: hidden;
+    height: auto !important;
+    user-select: text;
 }
 
 /* 导航栏 */
@@ -61,7 +70,7 @@ body {
 
 /* 内容区 */
 .docs-container {
-    max-width: 1000px;
+    max-width: 1200px;
     margin: 0 auto;
     padding: 40px 30px 80px;
 }
@@ -118,8 +127,8 @@ body {
 /* ===== 武将卡片 ===== */
 .hero-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
+    gap: 24px;
     margin-top: 20px;
 }
 
@@ -328,6 +337,37 @@ body {
     margin-bottom: 8px;
 }
 
+/* 特技子导航栏 */
+.skill-subnav {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+    margin: 24px 0 8px;
+    padding: 12px;
+    background: rgba(20, 25, 40, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+}
+
+.skill-subnav-link {
+    display: inline-block;
+    padding: 8px 24px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, 0.05);
+    color: #aaa;
+    text-decoration: none;
+    font-size: 15px;
+    letter-spacing: 2px;
+    transition: all 0.25s;
+}
+
+.skill-subnav-link:hover {
+    background: rgba(255, 215, 0, 0.12);
+    color: #ffd700;
+    transform: translateY(-2px);
+}
+
 /* 响应式 */
 @media screen and (max-width: 768px) {
     .docs-nav {
@@ -346,5 +386,6 @@ body {
     }
     .hero-grid {
         grid-template-columns: 1fr;
+        gap: 16px;
     }
 }
