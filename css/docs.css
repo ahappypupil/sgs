@@ -1,0 +1,350 @@
+/* ===== 文档页通用样式 ===== */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+    font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+    background: linear-gradient(135deg, #0d1b2a 0%, #1b2838 30%, #1a3a2a 60%, #2d1b3d 100%);
+    color: #e0e0e0;
+    min-height: 100vh;
+    line-height: 1.8;
+}
+
+/* 导航栏 */
+.docs-nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 40px;
+    background: rgba(10, 15, 25, 0.92);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid rgba(255, 215, 0, 0.15);
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.4);
+}
+
+.docs-nav-logo {
+    font-size: 24px;
+    font-weight: bold;
+    color: #ffd700;
+    letter-spacing: 4px;
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+    text-decoration: none;
+}
+
+.docs-nav-links {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.docs-nav-link {
+    color: #aaa;
+    text-decoration: none;
+    padding: 6px 16px;
+    border-radius: 8px;
+    font-size: 15px;
+    transition: all 0.2s;
+    white-space: nowrap;
+}
+
+.docs-nav-link:hover {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.08);
+}
+
+.docs-nav-link.active {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.12);
+}
+
+/* 内容区 */
+.docs-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 40px 30px 80px;
+}
+
+.docs-title {
+    font-size: 36px;
+    color: #ffd700;
+    text-align: center;
+    margin-bottom: 10px;
+    letter-spacing: 6px;
+    text-shadow: 0 0 20px rgba(255, 215, 0, 0.2);
+}
+
+.docs-subtitle {
+    text-align: center;
+    color: #888;
+    font-size: 16px;
+    margin-bottom: 40px;
+    letter-spacing: 2px;
+}
+
+/* 章节标题 */
+.section-title {
+    font-size: 24px;
+    color: #ffd700;
+    margin: 40px 0 16px;
+    padding-left: 16px;
+    border-left: 4px solid #ffd700;
+}
+
+.subsection-title {
+    font-size: 20px;
+    color: #66ddff;
+    margin: 24px 0 12px;
+}
+
+/* 段落 */
+.docs-p {
+    margin-bottom: 12px;
+    color: #ccc;
+    font-size: 15px;
+}
+
+.docs-ul {
+    margin: 8px 0 16px 24px;
+    color: #ccc;
+    font-size: 15px;
+}
+
+.docs-ul li {
+    margin-bottom: 6px;
+}
+
+/* ===== 武将卡片 ===== */
+.hero-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.hero-card {
+    background: rgba(20, 25, 40, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 20px;
+    transition: all 0.3s;
+    overflow: hidden;
+}
+
+.hero-card:hover {
+    border-color: rgba(255, 215, 0, 0.3);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
+    transform: translateY(-4px);
+}
+
+.hero-card-header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 14px;
+}
+
+.hero-card-avatar {
+    width: 64px;
+    height: 64px;
+    border-radius: 8px;
+    background-size: cover;
+    background-position: center;
+    border: 2px solid;
+    flex-shrink: 0;
+}
+
+.hero-card-info h3 {
+    font-size: 20px;
+    margin-bottom: 2px;
+}
+
+.hero-card-title {
+    font-size: 13px;
+    color: #888;
+}
+
+.hero-card-faction {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: bold;
+    margin-left: 8px;
+}
+
+.hero-card-hp {
+    color: #ff6666;
+    font-size: 14px;
+    margin-bottom: 8px;
+}
+
+.hero-card-bio {
+    font-size: 13px;
+    color: #999;
+    line-height: 1.6;
+    margin-bottom: 12px;
+}
+
+.hero-card-skills {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 12px;
+}
+
+.skill-item {
+    margin-bottom: 10px;
+}
+
+.skill-item:last-child {
+    margin-bottom: 0;
+}
+
+.skill-name {
+    font-size: 15px;
+    font-weight: bold;
+    color: #ffd700;
+    display: inline-block;
+    margin-right: 8px;
+}
+
+.skill-type {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 8px;
+    font-size: 11px;
+    font-weight: bold;
+}
+
+.skill-type-active {
+    background: rgba(34, 170, 34, 0.2);
+    color: #66dd66;
+}
+
+.skill-type-passive {
+    background: rgba(34, 102, 204, 0.2);
+    color: #66aaff;
+}
+
+.skill-type-triggered {
+    background: rgba(204, 68, 68, 0.2);
+    color: #ff8888;
+}
+
+.skill-desc {
+    font-size: 13px;
+    color: #aaa;
+    margin-top: 4px;
+}
+
+/* ===== 卡牌表格 ===== */
+.card-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 24px;
+    font-size: 14px;
+}
+
+.card-table th {
+    background: rgba(255, 215, 0, 0.08);
+    color: #ffd700;
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 2px solid rgba(255, 215, 0, 0.2);
+    font-weight: bold;
+}
+
+.card-table td {
+    padding: 10px 16px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    color: #ccc;
+}
+
+.card-table tr:hover td {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.card-name {
+    font-weight: bold;
+    color: #fff;
+}
+
+.card-tag {
+    display: inline-block;
+    padding: 2px 10px;
+    border-radius: 8px;
+    font-size: 12px;
+}
+
+.card-tag-basic { background: rgba(34, 170, 34, 0.15); color: #66dd66; }
+.card-tag-trick { background: rgba(204, 68, 68, 0.15); color: #ff8888; }
+.card-tag-equip { background: rgba(34, 102, 204, 0.15); color: #66aaff; }
+
+/* 回合流程 */
+.phase-flow {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.phase-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 215, 0, 0.06);
+    border: 1px solid rgba(255, 215, 0, 0.15);
+    border-radius: 8px;
+    padding: 8px 16px;
+    font-size: 14px;
+}
+
+.phase-step .phase-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: rgba(255, 215, 0, 0.15);
+    color: #ffd700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: bold;
+}
+
+/* 信息框 */
+.info-box {
+    background: rgba(20, 30, 50, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 16px 20px;
+    margin: 16px 0;
+}
+
+.info-box-title {
+    color: #66ddff;
+    font-size: 16px;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+/* 响应式 */
+@media screen and (max-width: 768px) {
+    .docs-nav {
+        padding: 12px 16px;
+        flex-direction: column;
+        gap: 10px;
+    }
+    .docs-nav-links {
+        justify-content: center;
+    }
+    .docs-container {
+        padding: 24px 16px 60px;
+    }
+    .docs-title {
+        font-size: 28px;
+    }
+    .hero-grid {
+        grid-template-columns: 1fr;
+    }
+}

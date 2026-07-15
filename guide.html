@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三国杀 · 游戏说明 & 规则</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="css/docs.css">
+</head>
+<body>
+
+<nav class="docs-nav">
+    <a href="index.html" class="docs-nav-logo">三 国 杀</a>
+    <div class="docs-nav-links">
+        <a href="guide.html" class="docs-nav-link active">游戏说明</a>
+        <a href="guide.html#rules" class="docs-nav-link">游戏规则</a>
+        <a href="cards.html" class="docs-nav-link">卡牌介绍</a>
+        <a href="heroes.html" class="docs-nav-link">成员介绍</a>
+        <a href="heroes.html#skills" class="docs-nav-link">特技介绍</a>
+    </div>
+</nav>
+
+<div class="docs-container">
+    <h1 class="docs-title">游 戏 说 明</h1>
+    <p class="docs-subtitle">了解三国杀的基本玩法与策略</p>
+
+    <!-- ===== 游戏说明 ===== -->
+    <h2 class="section-title">什么是三国杀？</h2>
+    <p class="docs-p">三国杀是一款以三国时期为背景的策略卡牌游戏。玩家扮演三国时期的武将，通过出牌、使用技能、配合队友等方式，击败对手获得胜利。</p>
+    <p class="docs-p">本游戏支持两种模式：<b>双人对战（1v1）</b>和<b>多人对战（3~6人）</b>。在1v1模式中，你与AI各选一名武将进行单挑；在多人模式中，多名武将混战，最后存活者获胜。</p>
+
+    <h2 class="section-title">基本概念</h2>
+    <ul class="docs-ul">
+        <li><b>体力值（HP）</b>：武将的生命值，归零时进入濒死状态，若无桃救援则死亡。</li>
+        <li><b>手牌</b>：手中持有的卡牌，每回合结束需弃至手牌数等于体力值。</li>
+        <li><b>装备区</b>：武器、防具、+1马（防御马）、-1马（攻击马）四个槽位。</li>
+        <li><b>判定区</b>：放置乐不思蜀等延时锦囊的区域。</li>
+        <li><b>花色</b>：♠黑桃、♥红桃、♦方块、♣梅花。红色为♥♦，黑色为♠♣。</li>
+        <li><b>势力</b>：蜀（绿）、魏（蓝）、吴（红）、群（灰），影响部分技能但无直接克制关系。</li>
+    </ul>
+
+    <h2 class="section-title">胜利条件</h2>
+    <div class="info-box">
+        <div class="info-box-title">🏆 胜利条件</div>
+        <ul class="docs-ul">
+            <li><b>1v1模式</b>：击败对方武将（体力归零且无法救援）即获胜。</li>
+            <li><b>多人模式</b>：成为最后存活的武将即获胜。</li>
+        </ul>
+    </div>
+
+    <!-- ===== 游戏规则 ===== -->
+    <h1 class="docs-title" id="rules" style="margin-top:60px">游 戏 规 则</h1>
+    <p class="docs-subtitle">详细的回合流程与结算规则</p>
+
+    <h2 class="section-title">回合流程</h2>
+    <p class="docs-p">每个回合按以下阶段依次进行：</p>
+    <div class="phase-flow">
+        <div class="phase-step"><span class="phase-num">1</span>回合开始</div>
+        <div class="phase-step"><span class="phase-num">2</span>判定阶段</div>
+        <div class="phase-step"><span class="phase-num">3</span>摸牌阶段</div>
+        <div class="phase-step"><span class="phase-num">4</span>出牌阶段</div>
+        <div class="phase-step"><span class="phase-num">5</span>弃牌阶段</div>
+        <div class="phase-step"><span class="phase-num">6</span>回合结束</div>
+    </div>
+
+    <h3 class="subsection-title">1. 回合开始阶段</h3>
+    <p class="docs-p">部分武将的技能在此阶段触发，如诸葛亮的【观星】、甄姬的【洛神】。</p>
+
+    <h3 class="subsection-title">2. 判定阶段</h3>
+    <p class="docs-p">若判定区有延时锦囊（如乐不思蜀），进行判定。从牌堆顶翻一张牌作为判定牌，根据花色决定效果。判定牌生效后进入弃牌堆。</p>
+
+    <h3 class="subsection-title">3. 摸牌阶段</h3>
+    <p class="docs-p">从牌堆摸两张牌加入手牌。部分技能可改变摸牌数，如周瑜的【英姿】摸三张。</p>
+
+    <h3 class="subsection-title">4. 出牌阶段</h3>
+    <p class="docs-p">可以执行以下操作（每项不限次数，除特别说明外）：</p>
+    <ul class="docs-ul">
+        <li>使用一张<b>杀</b>（每回合限一次，除非有咆哮/诸葛连弩）</li>
+        <li>使用一张<b>桃</b>回复1点体力（体力未满时）</li>
+        <li>使用<b>锦囊牌</b>（无中生有、过河拆桥、决斗等）</li>
+        <li>装备一张<b>装备牌</b>（替换同类型旧装备）</li>
+        <li>发动<b>武将技能</b>（制衡、苦肉、青囊、结姻等）</li>
+    </ul>
+
+    <h3 class="subsection-title">5. 弃牌阶段</h3>
+    <p class="docs-p">将手牌弃至等于当前体力值。如体力为3则最多保留3张手牌。部分技能可跳过弃牌，如吕蒙的【克己】。</p>
+
+    <h3 class="subsection-title">6. 回合结束阶段</h3>
+    <p class="docs-p">部分武将的技能在此阶段触发，如貂蝉的【闭月】摸一张牌。</p>
+
+    <h2 class="section-title">卡牌使用规则</h2>
+
+    <h3 class="subsection-title">基本牌</h3>
+    <ul class="docs-ul">
+        <li><b>杀</b>：对一名其他角色使用，目标需出【闪】抵消，否则受到1点伤害。每回合限用一次。</li>
+        <li><b>闪</b>：被动使用，当成为【杀】的目标时打出以抵消伤害。</li>
+        <li><b>桃</b>：出牌阶段回复1点体力（需体力未满）；或在濒死状态下回复1点体力。</li>
+    </ul>
+
+    <h3 class="subsection-title">锦囊牌</h3>
+    <ul class="docs-ul">
+        <li><b>延时锦囊</b>：乐不思蜀，置于目标判定区，下回合判定时生效。</li>
+        <li><b>即时锦囊</b>：使用后立即结算效果，如无中生有摸两张牌、决斗轮流出杀等。</li>
+        <li><b>无懈可击</b>：可在锦囊生效前抵消其对一名角色的效果。</li>
+    </ul>
+
+    <h3 class="subsection-title">装备牌</h3>
+    <ul class="docs-ul">
+        <li><b>武器</b>：增强攻击能力，如诸葛连弩（无限出杀）、青龙偃月刀（杀被闪后可追伤）。</li>
+        <li><b>防具</b>：提供防御，如八卦阵（判定红色视为出闪）、仁王盾（黑色杀无效）。</li>
+        <li><b>防御马（+1马）</b>：其他角色与你的距离+1，增加安全性。</li>
+        <li><b>攻击马（-1马）</b>：你与其他角色的距离-1，扩大攻击范围。</li>
+    </ul>
+    <p class="docs-p">每种装备同时只能装备一件，+1马和-1马可同时装备。装备新装备时旧装备弃置。</p>
+
+    <h2 class="section-title">伤害与濒死</h2>
+    <div class="info-box">
+        <div class="info-box-title">⚠ 伤害结算</div>
+        <ul class="docs-ul">
+            <li>角色受到伤害时体力值减1，若体力归零则进入濒死状态。</li>
+            <li>濒死状态下，该角色或其他角色可使用【桃】进行救援（回复1点体力）。</li>
+            <li>若无桃救援，该角色死亡，手牌和装备全部弃置。</li>
+            <li>部分技能在受到伤害后触发，如曹操的【奸雄】、郭嘉的【遗计】、荀彧的【节命】。</li>
+        </ul>
+    </div>
+
+    <h2 class="section-title">判定机制</h2>
+    <p class="docs-p">某些技能或卡牌效果需要进行<b>判定</b>：从牌堆顶翻一张牌作为判定牌，根据其花色或颜色决定结果。判定牌生效后进入弃牌堆。</p>
+    <ul class="docs-ul">
+        <li>马超【铁骑】：判定为红色则杀不可闪避</li>
+        <li>八卦阵：判定为红色视为出闪</li>
+        <li>乐不思蜀：判定为红桃则失效，否则跳过出牌阶段</li>
+        <li>司马懿【鬼才】：可在判定牌生效前打出手牌替换判定牌</li>
+        <li>郭嘉【天妒】：判定牌生效后可获得此牌</li>
+    </ul>
+
+    <h2 class="section-title">距离规则</h2>
+    <p class="docs-p">在多人模式中，角色之间的距离影响【杀】的使用范围和部分技能的效果：</p>
+    <ul class="docs-ul">
+        <li>默认情况下，相邻角色的距离为1。</li>
+        <li>装备<b>-1马（攻击马）</b>：你与其他角色的距离-1（更容易攻击远处角色）。</li>
+        <li>装备<b>+1马（防御马）</b>：其他角色与你的距离+1（更难被远处角色攻击）。</li>
+        <li>使用【杀】只能对距离1以内的角色使用（除非有武器增加攻击范围）。</li>
+    </ul>
+
+</div>
+
+</body>
+</html>
