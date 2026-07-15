@@ -70,7 +70,7 @@ body {
 
 /* 内容区 */
 .docs-container {
-    max-width: 1200px;
+    max-width: 1500px;
     margin: 0 auto;
     padding: 40px 30px 80px;
 }
@@ -125,38 +125,46 @@ body {
 }
 
 /* ===== 武将卡片 ===== */
-.hero-grid {
+/* 使用更高优先级选择器覆盖 style.css 的 .hero-card（选择界面用） */
+.docs-container .hero-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(440px, 1fr));
-    gap: 24px;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 16px;
     margin-top: 20px;
 }
 
-.hero-card {
+.docs-container .hero-card {
+    width: auto !important;
     background: rgba(20, 25, 40, 0.85);
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 12px;
-    padding: 20px;
+    padding: 18px 20px;
     transition: all 0.3s;
     overflow: hidden;
+    display: flex;
+    gap: 24px;
+    align-items: center;
 }
 
-.hero-card:hover {
+.docs-container .hero-card:hover {
     border-color: rgba(255, 215, 0, 0.3);
     box-shadow: 0 8px 30px rgba(0, 0, 0, 0.3);
     transform: translateY(-4px);
 }
 
-.hero-card-header {
+/* 右侧内容包裹层：纵向排列所有信息 */
+.docs-container .hero-card-body {
+    flex: 1;
+    min-width: 0;
     display: flex;
-    align-items: center;
-    gap: 16px;
-    margin-bottom: 14px;
+    flex-direction: column;
+    text-align: left;
 }
 
-.hero-card-avatar {
-    width: 64px;
-    height: 64px;
+/* 左侧头像区 - 缩小 */
+.docs-container .hero-card-avatar {
+    width: 90px;
+    height: 120px;
     border-radius: 8px;
     background-size: cover;
     background-position: center;
@@ -164,57 +172,81 @@ body {
     flex-shrink: 0;
 }
 
-.hero-card-info h3 {
-    font-size: 20px;
-    margin-bottom: 2px;
+/* 第一行：人名 + 称号 + 血量 横向排列 */
+.docs-container .hero-card-info {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    text-align: left;
 }
 
-.hero-card-title {
-    font-size: 13px;
-    color: #888;
+.docs-container .hero-card-info h3 {
+    font-size: 18px;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    line-height: 1.2;
 }
 
-.hero-card-faction {
+/* 称号 - 与人名同行 */
+.docs-container .hero-card-title {
+    font-size: 12px;
+    color: #777;
+    margin: 0;
+}
+
+/* 势力标签 */
+.docs-container .hero-card-faction {
     display: inline-block;
-    padding: 2px 10px;
-    border-radius: 10px;
+    padding: 1px 10px;
+    border-radius: 8px;
     font-size: 12px;
     font-weight: bold;
-    margin-left: 8px;
 }
 
-.hero-card-hp {
+/* 体力 - 与人名同行 */
+.docs-container .hero-card-hp {
     color: #ff6666;
-    font-size: 14px;
-    margin-bottom: 8px;
+    font-size: 13px;
+    margin: 0;
 }
 
-.hero-card-bio {
-    font-size: 13px;
+/* 简介 - 最后一行 */
+.docs-container .hero-card-bio {
+    font-size: 12px;
     color: #999;
     line-height: 1.6;
-    margin-bottom: 12px;
-}
-
-.hero-card-skills {
+    margin-top: 10px;
+    margin-bottom: 0;
+    padding-top: 8px;
     border-top: 1px solid rgba(255, 255, 255, 0.06);
-    padding-top: 12px;
 }
 
-.skill-item {
-    margin-bottom: 10px;
+/* 技能区 */
+.docs-container .hero-card-skills {
+    border-top: 1px solid rgba(255, 255, 255, 0.06);
+    padding-top: 8px;
+    margin-top: 8px;
 }
 
-.skill-item:last-child {
+.docs-container .skill-item {
+    margin-bottom: 5px;
+}
+
+.docs-container .skill-item:last-child {
     margin-bottom: 0;
 }
 
 .skill-name {
-    font-size: 15px;
+    font-size: 13px;
     font-weight: bold;
     color: #ffd700;
     display: inline-block;
-    margin-right: 8px;
+    margin-right: 5px;
 }
 
 .skill-type {
@@ -241,9 +273,10 @@ body {
 }
 
 .skill-desc {
-    font-size: 13px;
+    font-size: 11px;
     color: #aaa;
-    margin-top: 4px;
+    margin-top: 1px;
+    line-height: 1.5;
 }
 
 /* ===== 卡牌表格 ===== */
@@ -384,8 +417,17 @@ body {
     .docs-title {
         font-size: 28px;
     }
-    .hero-grid {
+    .docs-container .hero-grid {
         grid-template-columns: 1fr;
         gap: 16px;
+    }
+    .docs-container .hero-card {
+        flex-direction: column;
+        align-items: center;
+        text-align: center;
+    }
+    .docs-container .hero-card-body {
+        align-items: center;
+        width: 100%;
     }
 }
