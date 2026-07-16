@@ -358,6 +358,9 @@ const Game = {
         // 移除视频背景（如果有）
         this.removeVideoBackground();
         
+        // 保存当前背景索引
+        this.currentBgIndex = index;
+        
         if (index === -1) {
             // 默认背景
             gameScreen.style.backgroundImage = '';
@@ -386,6 +389,13 @@ const Game = {
         
         // 关闭面板
         this.toggleBgPanel();
+    },
+    
+    // 随机设置背景图（游戏开始时调用）
+    setRandomBackground() {
+        // 从背景图列表中随机选择一张
+        const randomIndex = Math.floor(Math.random() * this.bgList.length);
+        this.setBackground(randomIndex);
     },
     
     selectVideoBackground(videoIndex, videoPath) {
@@ -638,6 +648,9 @@ const Game = {
         // 切换界面
         document.getElementById('select-screen').classList.remove('active');
         document.getElementById('game-screen').classList.add('active');
+
+        // 随机选择背景图（保留当前背景色作为加载前的fallback）
+        this.setRandomBackground();
 
         this.gameOver = false;
         this.currentPlayer = 0;
