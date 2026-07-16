@@ -609,7 +609,8 @@ const Game = {
                 equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
                 isAI: false,
                 name: '你',
-                lebusishu: false
+                lebusishu: false,
+                shandian: false
             },
             {
                 hero: aiHero,
@@ -619,7 +620,8 @@ const Game = {
                 equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
                 isAI: true,
                 name: aiHero.name,
-                lebusishu: false
+                lebusishu: false,
+                shandian: false
             }
         ];
 
@@ -692,6 +694,18 @@ const Game = {
         this.players[0].hand.push(...drawnCards);
         this.log(`你摸了${drawCount}张牌`, 'player');
         this.render();
+        
+        // 闪电判定（在乐不思蜀之前）
+        const shandianHit = await this.processShandian(0);
+        if (shandianHit) {
+            // 闪电命中后，继续乐不思蜀判定（如果还有）
+            const skipPlay = await this.processLebusishu(0);
+            if (skipPlay || this.gameOver) {
+                if (!this.gameOver) this.endPlayerTurn();
+                return;
+            }
+            return;
+        }
         
         // 乐不思蜀判定
         const skipPlay = await this.processLebusishu(0);
@@ -799,6 +813,34 @@ const Game = {
         this.log(`${this.players[1].hero.name}摸了${drawCount}张牌`, 'ai');
         this.render();
         this.aiRunning = true;
+        
+        // 闪电判定（在乐不思蜀之前）
+        const shandianHit = await this.processShandian(1);
+        if (shandianHit) {
+            // 闪电命中后，继续乐不思蜀判定（如果还有）
+            const skipPlay = await this.processLebusishu(1);
+            if (skipPlay || this.gameOver) {
+                if (!this.gameOver) {
+                    this.aiRunning = false;
+                    const ai = this.players[1];
+                    const maxHand = ai.hp;
+                    if (ai.hand.length > maxHand) {
+                        const discardCount = ai.hand.length - maxHand;
+                        const toDiscard = AI.chooseDiscard(this, discardCount);
+                        toDiscard.forEach(c => {
+                            ai.hand = ai.hand.filter(h => h.id !== c.id);
+                            this.discardPile.push(c);
+                        });
+                        this.log(`${this.players[1].hero.name}弃了${discardCount}张牌`, 'ai');
+                    }
+                    this.render();
+                    await this.delay(500);
+                    this.log(`${this.players[1].hero.name}回合结束`, 'ai');
+                    setTimeout(() => this.startPlayerTurn(), 500);
+                }
+                return;
+            }
+        }
         
         // 乐不思蜀判定
         const skipPlay = await this.processLebusishu(1);
@@ -977,6 +1019,9 @@ const Game = {
             case 'wugufengdeng':
                 await this.resolveWugu(1);
                 break;
+            case 'shandian':
+                await this.resolveShandianAI(1);
+                break;
             default:
                 if (card.type === 'equipment') {
                     this.equipCard(1, card);
@@ -989,6 +1034,15 @@ const Game = {
         
         // 连营（陆逊）：失去最后的手牌时摸一张牌
         this.checkLianying(1);
+    },
+
+    // ===== 闪电结算（AI使用） =====
+    async resolveShandianAI(sourceIdx) {
+        const player = this.players[sourceIdx];
+        this.log(`${player.hero.name}使用【闪电】，置于自己的判定区`, 'ai');
+        this.sayHeroLine(sourceIdx, 'skill');
+        player.shandian = true;
+        this.render();
     },
 
     async executeKurou(playerIdx) {
@@ -1724,6 +1778,9 @@ const Game = {
                 break;
             case 'wugufengdeng':
                 await this.resolveWugu(0);
+                break;
+            case 'shandian':
+                await this.resolveShandianPlayer(0);
                 break;
             default:
                 if (card.type === 'equipment') {
@@ -2495,6 +2552,58 @@ const Game = {
             this.render();
             await this.delay(800);
             return true; // 跳过出牌阶段
+        }
+    },
+
+    // ===== 闪电结算（玩家使用） =====
+    async resolveShandianPlayer(sourceIdx) {
+        const player = this.players[sourceIdx];
+        this.log(`你使用【闪电】，置于自己的判定区`, 'player');
+        this.sayHeroLine(0, 'skill');
+        player.shandian = true;
+        this.render();
+    },
+
+    // 闪电判定（在回合开始时调用）
+    async processShandian(playerIdx) {
+        const player = this.players[playerIdx];
+        if (!player.shandian) return false; // 没有闪电
+        
+        this.log(`${player.hero.name}进行【闪电】判定...`, 'system');
+        this.sayHeroLine(playerIdx, 'skill');
+        this.render();
+        await this.delay(1200);
+        
+        const judgeCard = this.drawCard();
+        this.discardPile.push(judgeCard);
+        this.log(`判定结果：${judgeCard.suit}${judgeCard.number}（${judgeCard.isRed ? '红色' : '黑色'}）`, 'system');
+        this.render();
+        await this.delay(1000);
+        
+        // 天妒/鬼才处理
+        const finalJudgeCard = await this.processJudgeCard(playerIdx, judgeCard);
+        
+        // 判断是否为黑桃2~9
+        const isHit = finalJudgeCard.suit === SUIT.SPADE && finalJudgeCard.number >= 2 && finalJudgeCard.number <= 9;
+        
+        if (isHit) {
+            this.log(`⚡ 闪电命中！${player.hero.name}受到3点雷电伤害！`, 'damage');
+            this.sayHeroLine(playerIdx, 'damage');
+            player.shandian = false; // 弃置闪电
+            this.render();
+            await this.delay(800);
+            await this.dealDamage(playerIdx, null, { name: '闪电', isLightning: true }, 3);
+            return true;
+        } else {
+            this.log(`闪电未命中，传给下家`, 'system');
+            player.shandian = false;
+            // 传给另一个玩家
+            const nextPlayerIdx = playerIdx === 0 ? 1 : 0;
+            this.players[nextPlayerIdx].shandian = true;
+            this.log(`【闪电】移至${this.players[nextPlayerIdx].hero.name}的判定区`, 'system');
+            this.render();
+            await this.delay(800);
+            return false;
         }
     },
 
@@ -3692,6 +3801,16 @@ const Game = {
             leTag.textContent = '乐不思蜀';
             leTag.title = '回合开始时进行判定，非红桃则跳过出牌阶段';
             statusDiv.appendChild(leTag);
+        }
+        
+        // 闪电状态
+        if (player.shandian) {
+            const sdTag = document.createElement('span');
+            sdTag.className = 'skill-tag';
+            sdTag.style.cssText = 'background:#4B0082;color:#FFD700;border-color:#FFD700;';
+            sdTag.textContent = '⚡ 闪电';
+            sdTag.title = '回合开始时进行判定，黑桃2~9则受到3点雷电伤害';
+            statusDiv.appendChild(sdTag);
         }
         
         // 卡牌数量（AI）

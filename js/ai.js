@@ -131,6 +131,15 @@ const AI = {
             return { action: 'play', card: wugu, target: 1 };
         }
 
+        // 优先级5.9: 闪电（血量健康且没有闪电时使用）
+        const shandian = this.findCard(ai.hand, 'shandian');
+        if (shandian && ai.hp >= 3 && !ai.shandian && !player.shandian) {
+            // 血量健康时使用闪电，赌运气
+            if (Math.random() < 0.4) {
+                return { action: 'play', card: shandian, target: 1 };
+            }
+        }
+
         // 优先级6: 南蛮入侵/万箭齐发
         const nanman = this.findCard(ai.hand, 'nanmanruqin');
         if (nanman && ai.hand.length > 2) {

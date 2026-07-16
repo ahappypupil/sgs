@@ -119,6 +119,12 @@ const CARD_DEFS = {
         desc: '当一张锦囊牌生效前，你可以使用【无懈可击】抵消该锦囊对一名角色的效果。',
         short: '无懈'
     },
+    shandian: {
+        name: '闪电',
+        type: CARD_TYPE.TRICK,
+        desc: '出牌阶段对你使用，将【闪电】置于你的判定区。判定阶段进行判定：若为黑桃2~9，你受到3点雷电伤害并弃置【闪电】；否则将【闪电】传给下家。',
+        short: '闪电'
+    },
 
     // ===== 装备牌 =====
     zhugecrossbow: {
@@ -308,6 +314,11 @@ function createDeck() {
     [
         [SUIT.SPADE, 2], [SUIT.DIAMOND, 11], [SUIT.CLUB, 12]
     ].forEach(([s, n]) => deck.push(createCard('wuxiekeji', s, n)));
+
+    // 闪电 x2
+    [
+        [SUIT.SPADE, 1], [SUIT.CLUB, 12]
+    ].forEach(([s, n]) => deck.push(createCard('shandian', s, n)));
 
     // 诸葛连弩 x1
     deck.push(createCard('zhugecrossbow', SUIT.CLUB, 1));
