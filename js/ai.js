@@ -245,49 +245,63 @@ const AI = {
         return { dodge: false, cards: [] };
     },
 
-    /**
-     * AI决定是否出杀（响应南蛮入侵）
-     */
-    decideNanmanDodge(game) {
-        const ai = game.players[1];
-        const shas = ai.hand.filter(c => c.defKey === 'sha');
-        // 龙胆：闪当杀
-        const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
-        const allShas = [...shas, ...longdanShans];
+/**
+ * AI决定是否出杀（响应南蛮入侵）
+ */
+decideNanmanDodge(game) {
+    const ai = game.players[1];
+    
+    // 优先使用无懈可击
+    const wuxie = ai.hand.find(c => c.defKey === 'wuxiekeji');
+    if (wuxie && (ai.hp <= 2 || Math.random() < 0.3)) {
+        return { dodge: true, card: wuxie, useWuxie: true };
+    }
+    
+    const shas = ai.hand.filter(c => c.defKey === 'sha');
+    // 龙胆：闪当杀
+    const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
+    const allShas = [...shas, ...longdanShans];
 
-        if (allShas.length === 0) return { dodge: false, card: null };
+    if (allShas.length === 0) return { dodge: false, card: null };
 
-        // HP低时一定要出杀
-        if (ai.hp <= 2) return { dodge: true, card: allShas[0] };
+    // HP低时一定要出杀
+    if (ai.hp <= 2) return { dodge: true, card: allShas[0] };
 
-        // 手牌多时倾向出杀
-        if (ai.hand.length > 4) return { dodge: true, card: allShas[0] };
+    // 手牌多时倾向出杀
+    if (ai.hand.length > 4) return { dodge: true, card: allShas[0] };
 
-        // 随机
-        if (Math.random() < 0.5) return { dodge: true, card: allShas[0] };
+    // 随机
+    if (Math.random() < 0.5) return { dodge: true, card: allShas[0] };
 
-        return { dodge: false, card: null };
-    },
+    return { dodge: false, card: null };
+},
 
-    /**
-     * AI决定是否出闪（响应万箭齐发）
-     */
-    decideWanjianDodge(game) {
-        const ai = game.players[1];
-        const shans = ai.hand.filter(c => c.defKey === 'shan');
-        const shas = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'sha') : [];
-        // 倾国（甄姬）：黑色手牌当闪
-        const qingguoCards = hasSkill(ai.hero, '倾国') ? ai.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
-        const total = [...shans, ...shas, ...qingguoCards];
-        
-        if (total.length === 0) return { dodge: false, card: null };
-        
-        if (ai.hp <= 2) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
-        if (ai.hand.length > 4) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
-        if (Math.random() < 0.5) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
-        
-        return { dodge: false, card: null };
-    },
+/**
+ * AI决定是否出闪（响应万箭齐发）
+ */
+decideWanjianDodge(game) {
+    const ai = game.players[1];
+    
+    // 优先使用无懈可击
+    const wuxie = ai.hand.find(c => c.defKey === 'wuxiekeji');
+    if (wuxie && (ai.hp <= 2 || Math.random() < 0.3)) {
+        return { dodge: true, card: wuxie, useWuxie: true };
+    }
+    
+    const shans = ai.hand.filter(c => c.defKey === 'shan');
+    const shas = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'sha') : [];
+    // 倾国（甄姬）：黑色手牌当闪
+    const qingguoCards = hasSkill(ai.hero, '倾国') ? ai.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+    const total = [...shans, ...shas, ...qingguoCards];
+
+    if (total.length === 0) return { dodge: false, card: null };
+
+    if (ai.hp <= 2) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+    if (ai.hand.length > 4) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+    if (Math.random() < 0.5) return { dodge: true, card: shans[0] || shas[0] || qingguoCards[0] };
+
+    return { dodge: false, card: null };
+},
 
     /**
      * AI决斗响应 - 是否出杀
@@ -311,6 +325,79 @@ const AI = {
         if (Math.random() < 0.4) return { play: true, card: allShas[0] };
         
         return { play: false, card: null };
+    },
+
+    /**
+     * AI决定是否使用无懈可击
+     * @param {Object} game - 游戏实例
+     * @param {string} cardName - 被抵消的锦囊牌名称
+     * @returns {Object} { useWuxie: boolean, card: Card|null }
+     */
+    decideWuxiekeji(game, cardName) {
+        const ai = game.players[1];
+        const wuxie = ai.hand.find(c => c.defKey === 'wuxiekeji');
+        
+        if (!wuxie) return { useWuxie: false, card: null };
+        
+        // 根据锦囊类型和AI状态决定是否使用无懈可击
+        const threatLevel = this.getCardThreatLevel(cardName, ai);
+        
+        // 威胁等级高时优先使用
+        if (threatLevel >= 3) {
+            return { useWuxie: true, card: wuxie };
+        }
+        
+        // 威胁等级中等时，根据手牌数量和血量决定
+        if (threatLevel === 2) {
+            if (ai.hp <= 2 || ai.hand.length <= 3) {
+                return { useWuxie: true, card: wuxie };
+            }
+        }
+        
+        // 低威胁时，随机使用（避免AI总是不用无懈可击）
+        if (Math.random() < 0.3) {
+            return { useWuxie: true, card: wuxie };
+        }
+        
+        return { useWuxie: false, card: null };
+    },
+
+    /**
+     * 评估锦囊牌的威胁等级
+     * @param {string} cardName - 锦囊牌名称
+     * @param {Object} ai - AI玩家对象
+     * @returns {number} 威胁等级 1-5
+     */
+    getCardThreatLevel(cardName, ai) {
+        const threatMap = {
+            '乐不思蜀': 5,  // 跳过回合，最高威胁
+            '顺手牵羊': 4,  // 直接损失手牌或装备
+            '过河拆桥': 3,  // 损失手牌或装备
+            '决斗': 3,      // 可能受到伤害
+            '火攻': 3,      // 必定受到伤害
+            '南蛮入侵': 2,  // AOE伤害
+            '万箭齐发': 2,  // AOE伤害
+            '桃园结义': 1,  // 对方回血，威胁较低
+            '五谷丰登': 1,  // 双方摸牌，威胁较低
+        };
+        
+        // 特殊情况：AI血量低时，伤害类锦囊威胁提升
+        let level = threatMap[cardName] || 2;
+        
+        if (ai.hp <= 2) {
+            if (['决斗', '火攻', '南蛮入侵', '万箭齐发'].includes(cardName)) {
+                level = Math.min(5, level + 1);
+            }
+        }
+        
+        // AI手牌少时，顺手牵羊和过河拆桥威胁提升
+        if (ai.hand.length <= 2) {
+            if (['顺手牵羊', '过河拆桥'].includes(cardName)) {
+                level = Math.min(5, level + 1);
+            }
+        }
+        
+        return level;
     },
 
     /**

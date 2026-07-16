@@ -966,16 +966,16 @@ const Game = {
                 await this.resolveWanjian(1, 0);
                 break;
             case 'lebusishu':
-                this.resolveLebusishu(1, 0);
+                await this.resolveLebusishu(1, 0);
                 break;
             case 'huogong':
                 await this.resolveHuogong(1, 0);
                 break;
             case 'taoyuanjieyi':
-                this.resolveTaoyuan(1);
+                await this.resolveTaoyuan(1);
                 break;
             case 'wugufengdeng':
-                this.resolveWugu(1);
+                await this.resolveWugu(1);
                 break;
             default:
                 if (card.type === 'equipment') {
@@ -1714,16 +1714,16 @@ const Game = {
                 this.resolveWanjianPlayer(0, 1);
                 break;
             case 'lebusishu':
-                this.resolveLebusishuPlayer(0, 1);
+                await this.resolveLebusishuPlayer(0, 1);
                 break;
             case 'huogong':
-                this.resolveHuogongPlayer(0, 1);
+                await this.resolveHuogongPlayer(0, 1);
                 break;
             case 'taoyuanjieyi':
-                this.resolveTaoyuan(0);
+                await this.resolveTaoyuan(0);
                 break;
             case 'wugufengdeng':
-                this.resolveWugu(0);
+                await this.resolveWugu(0);
                 break;
             default:
                 if (card.type === 'equipment') {
@@ -1965,10 +1965,22 @@ const Game = {
 
     // ===== 决斗结算 =====
     async resolveJuedouPlayer(sourceIdx, targetIdx, card) {
-        this.log(`你使用【决斗】，目标：${this.players[targetIdx].hero.name}`, 'player');
+        const target = this.players[targetIdx];
+        this.log(`你使用【决斗】，目标：${target.hero.name}`, 'player');
         this.sayHeroLine(0, 'attack');
         this.processing = true;
         this.render();
+        
+        // 询问目标是否使用无懈可击
+        const wuxieResponse = await this.askPlayerWuxiekeji('决斗');
+        if (wuxieResponse.useWuxie) {
+            this.log(`你使用【无懈可击】抵消【决斗】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.processing = false;
+            this.render();
+            return;
+        }
+        
         // 目标先出杀 - 使用async版本
         await this.juedouStepAsync(targetIdx, sourceIdx, card, true);
         if (!this.responseResolver && !this.gameOver) {
@@ -1978,9 +1990,23 @@ const Game = {
     },
 
     async resolveJuedou(sourceIdx, targetIdx, card) {
-        this.log(`${this.players[sourceIdx].hero.name}使用【决斗】，目标：${this.players[targetIdx].hero.name}`, 'ai');
+        const target = this.players[targetIdx];
+        const source = this.players[sourceIdx];
+        this.log(`${source.hero.name}使用【决斗】，目标：${target.hero.name}`, 'ai');
         this.sayHeroLine(1, 'attack');
         this.render();
+        
+        // AI决定是否使用无懈可击
+        const wuxieResponse = AI.decideWuxiekeji(this, '决斗');
+        if (wuxieResponse.useWuxie) {
+            target.hand = target.hand.filter(c => c.id !== wuxieResponse.card.id);
+            this.discardPile.push(wuxieResponse.card);
+            this.log(`你使用【无懈可击】抵消【决斗】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.render();
+            return;
+        }
+        
         // 目标（玩家）先出杀
         await this.juedouStepAsync(targetIdx, sourceIdx, card, true);
     },
@@ -2051,6 +2077,14 @@ const Game = {
         if (response.dodge) {
             target.hand = target.hand.filter(c => c.id !== response.card.id);
             this.discardPile.push(response.card);
+            // AI使用无懈可击
+            if (response.useWuxie) {
+                this.log(`${target.hero.name}使用【无懈可击】抵消【南蛮入侵】`, 'ai');
+                this.sayHeroLine(1, 'skill');
+                this.processing = false;
+                this.render();
+                return;
+            }
             const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
             this.log(`${target.hero.name}出【杀】${skillText}抵挡`, 'ai');
             if (response.card.defKey === 'shan') this.sayHeroLine(1, 'skill');
@@ -2077,6 +2111,13 @@ const Game = {
         if (response.play) {
             target.hand = target.hand.filter(c => c.id !== response.card.id);
             this.discardPile.push(response.card);
+            // 无懈可击抵消锦囊效果
+            if (response.card.defKey === 'wuxiekeji') {
+                this.log(`你使用【无懈可击】抵消【南蛮入侵】`, 'player');
+                this.sayHeroLine(0, 'skill');
+                this.render();
+                return;
+            }
             const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
             this.log(`你出【杀】${skillText}抵挡`, 'player');
             if (response.card.defKey === 'shan') this.sayHeroLine(0, 'skill');
@@ -2101,6 +2142,14 @@ const Game = {
         if (response.dodge) {
             target.hand = target.hand.filter(c => c.id !== response.card.id);
             this.discardPile.push(response.card);
+            // AI使用无懈可击
+            if (response.useWuxie) {
+                this.log(`${target.hero.name}使用【无懈可击】抵消【万箭齐发】`, 'ai');
+                this.sayHeroLine(1, 'skill');
+                this.processing = false;
+                this.render();
+                return;
+            }
             const skillText = response.card.defKey === 'sha' ? '（龙胆）' : '';
             this.log(`${target.hero.name}出【闪】${skillText}抵挡`, 'ai');
             this.sayHeroLine(1, 'dodge');
@@ -2126,6 +2175,13 @@ const Game = {
         if (response.play) {
             target.hand = target.hand.filter(c => c.id !== response.card.id);
             this.discardPile.push(response.card);
+            // 无懈可击抵消锦囊效果
+            if (response.card.defKey === 'wuxiekeji') {
+                this.log(`你使用【无懈可击】抵消【万箭齐发】`, 'player');
+                this.sayHeroLine(0, 'skill');
+                this.render();
+                return;
+            }
             const skillText = response.card.defKey === 'sha' ? '（龙胆）' : '';
             this.log(`你出【闪】${skillText}抵挡`, 'player');
             this.sayHeroLine(0, 'dodge');
@@ -2144,6 +2200,16 @@ const Game = {
         this.sayHeroLine(0, 'skill');
         this.processing = true;
         this.render();
+        
+        // 询问目标是否使用无懈可击
+        const wuxieResponse = await this.askPlayerWuxiekeji('过河拆桥');
+        if (wuxieResponse.useWuxie) {
+            this.log(`你使用【无懈可击】抵消【过河拆桥】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.processing = false;
+            this.render();
+            return;
+        }
         
         const selection = await this.askPlayerSelectTargetCard('guohe', targetIdx);
         
@@ -2175,6 +2241,17 @@ const Game = {
         this.log(`${source.hero.name}使用【过河拆桥】`, 'ai');
         this.sayHeroLine(1, 'skill');
         
+        // AI决定是否使用无懈可击
+        const wuxieResponse = AI.decideWuxiekeji(this, '过河拆桥');
+        if (wuxieResponse.useWuxie) {
+            target.hand = target.hand.filter(c => c.id !== wuxieResponse.card.id);
+            this.discardPile.push(wuxieResponse.card);
+            this.log(`你使用【无懈可击】抵消【过河拆桥】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.render();
+            return;
+        }
+        
         const targetChoice = AI.chooseSabotageTarget(this);
         if (!targetChoice) {
             this.log(`你没有牌可以弃置`, 'system');
@@ -2203,6 +2280,16 @@ const Game = {
         this.sayHeroLine(0, 'skill');
         this.processing = true;
         this.render();
+        
+        // 询问目标是否使用无懈可击
+        const wuxieResponse = await this.askPlayerWuxiekeji('顺手牵羊');
+        if (wuxieResponse.useWuxie) {
+            this.log(`你使用【无懈可击】抵消【顺手牵羊】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.processing = false;
+            this.render();
+            return;
+        }
         
         const selection = await this.askPlayerSelectTargetCard('shunshou', targetIdx);
         
@@ -2233,6 +2320,17 @@ const Game = {
         const source = this.players[sourceIdx];
         this.log(`${source.hero.name}使用【顺手牵羊】`, 'ai');
         this.sayHeroLine(1, 'skill');
+        
+        // AI决定是否使用无懈可击
+        const wuxieResponse = AI.decideWuxiekeji(this, '顺手牵羊');
+        if (wuxieResponse.useWuxie) {
+            target.hand = target.hand.filter(c => c.id !== wuxieResponse.card.id);
+            this.discardPile.push(wuxieResponse.card);
+            this.log(`你使用【无懈可击】抵消【顺手牵羊】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.render();
+            return;
+        }
         
         const targetChoice = AI.chooseStealTarget(this);
         if (!targetChoice) {
@@ -2322,20 +2420,46 @@ const Game = {
     },
 
     // ===== 乐不思蜀结算 =====
-    resolveLebusishuPlayer(sourceIdx, targetIdx) {
+    async resolveLebusishuPlayer(sourceIdx, targetIdx) {
         const target = this.players[targetIdx];
         this.log(`你使用【乐不思蜀】，目标：${target.hero.name}`, 'player');
         this.sayHeroLine(0, 'skill');
+        this.processing = true;
+        this.render();
+        
+        // 询问目标是否使用无懈可击
+        const wuxieResponse = await this.askPlayerWuxiekeji('乐不思蜀');
+        if (wuxieResponse.useWuxie) {
+            this.log(`你使用【无懈可击】抵消【乐不思蜀】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.processing = false;
+            this.render();
+            return;
+        }
+        
         target.lebusishu = true;
         this.log(`${target.hero.name}进入乐不思蜀状态`, 'system');
+        this.processing = false;
         this.render();
     },
 
-    resolveLebusishu(sourceIdx, targetIdx) {
+    async resolveLebusishu(sourceIdx, targetIdx) {
         const target = this.players[targetIdx];
         const source = this.players[sourceIdx];
         this.log(`${source.hero.name}使用【乐不思蜀】，目标：${target.hero.name}`, 'ai');
         this.sayHeroLine(1, 'skill');
+        
+        // AI决定是否使用无懈可击
+        const wuxieResponse = AI.decideWuxiekeji(this, '乐不思蜀');
+        if (wuxieResponse.useWuxie) {
+            target.hand = target.hand.filter(c => c.id !== wuxieResponse.card.id);
+            this.discardPile.push(wuxieResponse.card);
+            this.log(`你使用【无懈可击】抵消【乐不思蜀】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.render();
+            return;
+        }
+        
         target.lebusishu = true;
         this.log(`${target.hero.name}进入乐不思蜀状态`, 'system');
         this.render();
@@ -2464,9 +2588,22 @@ const Game = {
         const source = this.players[sourceIdx];
         this.log(`你使用【火攻】，目标：${target.hero.name}`, 'player');
         this.sayHeroLine(0, 'skill');
+        this.processing = true;
+        this.render();
+        
+        // 询问目标是否使用无懈可击
+        const wuxieResponse = await this.askPlayerWuxiekeji('火攻');
+        if (wuxieResponse.useWuxie) {
+            this.log(`你使用【无懈可击】抵消【火攻】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.processing = false;
+            this.render();
+            return;
+        }
         
         if (source.hand.length === 0) {
             this.log(`你没有手牌，火攻无效`, 'system');
+            this.processing = false;
             this.render();
             return;
         }
@@ -2478,6 +2615,7 @@ const Game = {
         this.log(`${target.hero.name}受到1点火焰伤害`, 'damage');
         this.sayHeroLine(targetIdx, 'damage');
         await this.dealDamage(targetIdx, sourceIdx, null);
+        this.processing = false;
         this.render();
     },
 
@@ -2486,6 +2624,17 @@ const Game = {
         const source = this.players[sourceIdx];
         this.log(`${source.hero.name}使用【火攻】，目标：${target.hero.name}`, 'ai');
         this.sayHeroLine(1, 'skill');
+        
+        // AI决定是否使用无懈可击
+        const wuxieResponse = AI.decideWuxiekeji(this, '火攻');
+        if (wuxieResponse.useWuxie) {
+            target.hand = target.hand.filter(c => c.id !== wuxieResponse.card.id);
+            this.discardPile.push(wuxieResponse.card);
+            this.log(`你使用【无懈可击】抵消【火攻】`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.render();
+            return;
+        }
         
         if (source.hand.length === 0) {
             this.log(`${source.hero.name}没有手牌，火攻无效`, 'system');
@@ -2503,9 +2652,39 @@ const Game = {
     },
 
     // ===== 桃园结义结算 =====
-    resolveTaoyuan(sourceIdx) {
-        this.log(`使用【桃园结义】，所有角色回复1点体力`, sourceIdx === 0 ? 'player' : 'ai');
+    async resolveTaoyuan(sourceIdx) {
+        const isPlayer = sourceIdx === 0;
+        this.log(`使用【桃园结义】，所有角色回复1点体力`, isPlayer ? 'player' : 'ai');
         this.sayHeroLine(sourceIdx, 'skill');
+        this.processing = true;
+        this.render();
+        
+        // 询问对方是否使用无懈可击
+        if (isPlayer) {
+            // 玩家使用，询问AI是否无懈（简化处理：AI自己决定是否无懈）
+            const wuxieResponse = AI.decideWuxiekeji(this, '桃园结义');
+            if (wuxieResponse.useWuxie) {
+                const ai = this.players[1];
+                ai.hand = ai.hand.filter(c => c.id !== wuxieResponse.card.id);
+                this.discardPile.push(wuxieResponse.card);
+                this.log(`${ai.hero.name}使用【无懈可击】抵消【桃园结义】`, 'ai');
+                this.sayHeroLine(1, 'skill');
+                this.processing = false;
+                this.render();
+                return;
+            }
+        } else {
+            // AI使用，询问玩家是否无懈
+            const wuxieResponse = await this.askPlayerWuxiekeji('桃园结义');
+            if (wuxieResponse.useWuxie) {
+                this.log(`你使用【无懈可击】抵消【桃园结义】`, 'player');
+                this.sayHeroLine(0, 'skill');
+                this.processing = false;
+                this.render();
+                return;
+            }
+        }
+        
         for (let i = 0; i < this.players.length; i++) {
             const p = this.players[i];
             if (p.hp < p.maxHp) {
@@ -2514,19 +2693,51 @@ const Game = {
                 this.sayHeroLine(i, 'heal');
             }
         }
+        this.processing = false;
         this.render();
     },
 
     // ===== 五谷丰登结算 =====
-    resolveWugu(sourceIdx) {
-        this.log(`使用【五谷丰登】，所有角色摸一张牌`, sourceIdx === 0 ? 'player' : 'ai');
+    async resolveWugu(sourceIdx) {
+        const isPlayer = sourceIdx === 0;
+        this.log(`使用【五谷丰登】，所有角色摸一张牌`, isPlayer ? 'player' : 'ai');
         this.sayHeroLine(sourceIdx, 'skill');
+        this.processing = true;
+        this.render();
+        
+        // 询问对方是否使用无懈可击
+        if (isPlayer) {
+            // 玩家使用，询问AI是否无懈（简化处理：AI自己决定是否无懈）
+            const wuxieResponse = AI.decideWuxiekeji(this, '五谷丰登');
+            if (wuxieResponse.useWuxie) {
+                const ai = this.players[1];
+                ai.hand = ai.hand.filter(c => c.id !== wuxieResponse.card.id);
+                this.discardPile.push(wuxieResponse.card);
+                this.log(`${ai.hero.name}使用【无懈可击】抵消【五谷丰登】`, 'ai');
+                this.sayHeroLine(1, 'skill');
+                this.processing = false;
+                this.render();
+                return;
+            }
+        } else {
+            // AI使用，询问玩家是否无懈
+            const wuxieResponse = await this.askPlayerWuxiekeji('五谷丰登');
+            if (wuxieResponse.useWuxie) {
+                this.log(`你使用【无懈可击】抵消【五谷丰登】`, 'player');
+                this.sayHeroLine(0, 'skill');
+                this.processing = false;
+                this.render();
+                return;
+            }
+        }
+        
         for (let i = 0; i < this.players.length; i++) {
             const p = this.players[i];
             const card = this.drawCard();
             p.hand.push(card);
             this.log(`${p.hero.name}摸了一张牌`, i === 0 ? 'player' : 'ai');
         }
+        this.processing = false;
         this.render();
     },
 
@@ -2989,6 +3200,8 @@ const Game = {
             this.confirmNanmanResponse();
         } else if (this.responseMode === 'wanjian') {
             this.confirmWanjianResponse();
+        } else if (this.responseMode === 'wuxiekeji') {
+            this.confirmWuxiekejiResponse();
         } else if (this.responseMode === 'peach') {
             this.confirmPeachResponse();
         } else if (this.responseMode === 'ganglie') {
@@ -3087,8 +3300,10 @@ const Game = {
             const shas = player.hand.filter(c => c.defKey === 'sha');
             // 龙胆：闪当杀
             const longdanShans = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'shan') : [];
+            // 无懈可击
+            const wuxieCards = player.hand.filter(c => c.defKey === 'wuxiekeji');
             
-            document.getElementById('response-prompt').textContent = '南蛮入侵！是否出【杀】？';
+            document.getElementById('response-prompt').textContent = '南蛮入侵！是否出【杀】或使用【无懈可击】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
             
@@ -3107,6 +3322,13 @@ const Game = {
                 badge.style.cssText = 'position: absolute; top: 2px; right: 2px; background: #4a90d9; color: white; font-size: 10px; padding: 1px 4px; border-radius: 3px;';
                 cardEl.style.position = 'relative';
                 cardEl.appendChild(badge);
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+            
+            // 显示无懈可击
+            wuxieCards.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
             });
@@ -3144,12 +3366,21 @@ const Game = {
             const shas = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'sha') : [];
             // 倾国（甄姬）：黑色手牌当闪
             const qingguoCards = hasSkill(player.hero, '倾国') ? player.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+            // 无懈可击
+            const wuxieCards = player.hand.filter(c => c.defKey === 'wuxiekeji');
             
-            document.getElementById('response-prompt').textContent = '万箭齐发！是否出【闪】？';
+            document.getElementById('response-prompt').textContent = '万箭齐发！是否出【闪】或使用【无懈可击】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
             
             [...shans, ...shas, ...qingguoCards].forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+            
+            // 显示无懈可击
+            wuxieCards.forEach(card => {
                 const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
@@ -3171,6 +3402,57 @@ const Game = {
             resolver({ play: true, card: this.responseSelectedCards[0] });
         } else {
             resolver({ play: false, card: null });
+        }
+        this.responseSelectedCards = [];
+    },
+
+    // ===== 通用无懈可击询问 =====
+    // 询问玩家是否使用无懈可击
+    askPlayerWuxiekeji(cardName) {
+        return new Promise((resolve) => {
+            const player = this.players[0];
+            const wuxieCards = player.hand.filter(c => c.defKey === 'wuxiekeji');
+            
+            if (wuxieCards.length === 0) {
+                resolve({ useWuxie: false, card: null });
+                return;
+            }
+            
+            this.responseMode = 'wuxiekeji';
+            this.responseSelectedCards = [];
+            this.responseResolver = resolve;
+            document.getElementById('response-cancel').style.display = '';
+            
+            document.getElementById('response-prompt').textContent = `对方使用【${cardName}】，是否使用【无懈可击】抵消？`;
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+            
+            wuxieCards.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+            
+            document.getElementById('response-cancel').textContent = '不使用无懈可击';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
+    // 确认无懈可击响应
+    confirmWuxiekejiResponse() {
+        const resolver = this.responseResolver;
+        this.responseResolver = null;
+        this.responseMode = null;
+        document.getElementById('response-panel').classList.add('hidden');
+        
+        if (this.responseSelectedCards.length > 0) {
+            const card = this.responseSelectedCards[0];
+            this.players[0].hand = this.players[0].hand.filter(c => c.id !== card.id);
+            this.discardPile.push(card);
+            resolver({ useWuxie: true, card: card });
+        } else {
+            resolver({ useWuxie: false, card: null });
         }
         this.responseSelectedCards = [];
     },
