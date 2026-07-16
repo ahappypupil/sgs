@@ -1652,6 +1652,17 @@ body {
         font-size: 12px;
     }
 
+    /* 手机端禁用卡牌跳动效果 */
+    .card:hover,
+    .card.selected {
+        transform: none;
+    }
+
+    .card.selected {
+        border-color: #ffd700;
+        box-shadow: 0 0 10px rgba(255,215,0,0.6);
+    }
+
     /* 手机端卡牌名称改为横排，避免竖排文字被裁剪 */
     .card .card-name {
         writing-mode: horizontal-tb;
@@ -1716,11 +1727,13 @@ body {
     }
 
     .hand-cards.compact .card:hover {
-        transform: translateY(-8px);
+        transform: none;
     }
 
     .hand-cards.compact .card.selected {
-        transform: translateY(-14px);
+        transform: none;
+        border-color: #ffd700;
+        box-shadow: 0 0 8px rgba(255,215,0,0.5);
     }
     
     /* 战斗日志 */
