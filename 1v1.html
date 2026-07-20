@@ -187,13 +187,11 @@
     <script src="js/game.js"></script>
     <script>
         // 设置面板开关逻辑
-        document.addEventListener('DOMContentLoaded', () => {
-            const toggle = document.getElementById('settings-toggle');
-            const panel = document.getElementById('settings-panel');
-            const close = document.getElementById('settings-close');
-            if (toggle) toggle.addEventListener('click', () => panel.classList.toggle('hidden'));
-            if (close) close.addEventListener('click', () => panel.classList.add('hidden'));
-        });
+        const toggle = document.getElementById('settings-toggle');
+        const panel = document.getElementById('settings-panel');
+        const close = document.getElementById('settings-close');
+        if (toggle) toggle.addEventListener('click', () => panel.classList.toggle('hidden'));
+        if (close) close.addEventListener('click', () => panel.classList.add('hidden'));
     </script>
 </body>
 </html>

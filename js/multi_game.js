@@ -1173,4 +1173,8 @@ const MultiGame = {
 };
 
 // 启动
-window.addEventListener('DOMContentLoaded', () => MultiGame.init());
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => MultiGame.init());
+} else {
+    MultiGame.init();
+}

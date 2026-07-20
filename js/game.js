@@ -386,16 +386,13 @@ const Game = {
         document.querySelectorAll('.bg-item').forEach(item => {
             item.classList.toggle('selected', parseInt(item.dataset.bgIndex) === index);
         });
-        
-        // 关闭面板
-        this.toggleBgPanel();
     },
     
     // 随机设置背景图（游戏开始时调用）
     setRandomBackground() {
         // 从背景图列表中随机选择一张
         const randomIndex = Math.floor(Math.random() * this.bgList.length);
-        this.setBackground(randomIndex);
+        this.selectBackground(randomIndex);
     },
     
     selectVideoBackground(videoIndex, videoPath) {
@@ -1554,7 +1551,7 @@ const Game = {
     },
 
     // ===== 玩家出牌 =====
-    onPlayerCardClick(card) {
+    async onPlayerCardClick(card) {
         if (this.gameOver) return;
         if (this.responseResolver) {
             // 响应模式
@@ -1656,7 +1653,7 @@ const Game = {
         
         // 如果有多种用法，取第一种（简化处理）
         const playAs = playable[0];
-        this.playerPlayCard(card, playAs);
+        await this.playerPlayCard(card, playAs);
     },
 
     getCardPlayableAs(playerIdx, card) {
@@ -1721,7 +1718,7 @@ const Game = {
         return results;
     },
 
-    playerPlayCard(card, playAs) {
+    async playerPlayCard(card, playAs) {
         const player = this.players[0];
         const targetIdx = 1; // 1v1中目标固定为对方
         
@@ -4715,4 +4712,8 @@ const Game = {
 };
 
 // 启动游戏
-window.addEventListener('DOMContentLoaded', () => Game.init());
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => Game.init());
+} else {
+    Game.init();
+}
