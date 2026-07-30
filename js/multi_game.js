@@ -715,7 +715,15 @@ const MultiGame = {
         if (card.defKey === 'tao') {
             if (player.hp < player.maxHp) results.push({ as: 'tao', skill: null });
         }
-        if (card.type === 'trick' && card.defKey !== 'wuxiekeji') results.push({ as: card.defKey, skill: null });
+        if (card.type === 'trick' && card.defKey !== 'wuxiekeji') {
+            // 火攻：需要有至少一个其他角色有手牌
+            if (card.defKey === 'huogong') {
+                const hasValidTarget = this.players.some((p, i) => i !== playerIdx && !p.dead && p.hand.length > 0);
+                if (hasValidTarget) results.push({ as: card.defKey, skill: null });
+            } else {
+                results.push({ as: card.defKey, skill: null });
+            }
+        }
         if (card.type === 'equipment') results.push({ as: card.defKey, skill: null });
         if (hasSkill(player.hero, '武圣') && card.isRed && card.defKey !== 'sha') {
             const canSlash = !this.hasSlashedThisTurn || this.canSlashUnlimited(player);

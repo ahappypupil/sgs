@@ -1436,6 +1436,15 @@ const Game = {
     // ===== 结姻（孙尚香）=====
     async executeJieyin(playerIdx) {
         const player = this.players[playerIdx];
+        const opponentIdx = playerIdx === 0 ? 1 : 0;
+        const opponent = this.players[opponentIdx];
+
+        // 结姻仅限男性角色
+        if (opponent.hero.gender === 'female') {
+            this.log(`对方非男性角色，无法发动【结姻】`, 'system');
+            return;
+        }
+
         this.hasUsedJieyinThisTurn = true;
         this.sayHeroLine(playerIdx, 'skill');
         if (player.isAI) {
@@ -1448,7 +1457,7 @@ const Game = {
                         this.discardPile.push(c);
                     });
                     this.heal(playerIdx, 1);
-                    this.heal(playerIdx === 0 ? 1 : 0, 1);
+                    this.heal(opponentIdx, 1);
                     this.log(`${player.hero.name}发动【结姻】，双方各回复1点体力`, 'ai');
                     this.render();
                 }
@@ -1733,8 +1742,10 @@ const Game = {
         }
         if (card.type === 'trick' && card.defKey !== 'wuxiekeji') {
             // 锦囊牌基本都能用（无懈可击除外，它是响应牌）
-            // 谦逊（陆逊）：不能成为乐不思蜀目标
-            if (card.defKey === 'lebusishu' && hasSkill(this.players[1].hero, '谦逊')) {
+            // 火攻：对方需有手牌
+            if (card.defKey === 'huogong' && this.players[1].hand.length === 0) {
+                // 对方无手牌，火攻不可用
+            } else if (card.defKey === 'lebusishu' && hasSkill(this.players[1].hero, '谦逊')) {
                 // 对方有谦逊，乐不思蜀不可用
             } else if (card.isRed === false && hasSkill(this.players[1].hero, '帷幕')) {
                 // 帷幕（贾诏）：不能成为黑色锦囊牌目标
@@ -2263,6 +2274,14 @@ const Game = {
         this.render();
         await this.delay(1000);
         const target = this.players[targetIdx];
+        // 帷幕（贾诩）：不能成为黑色锦囊牌目标
+        if (hasSkill(target.hero, '帷幕')) {
+            this.log(`${target.hero.name}免疫【南蛮入侵】（帷幕）`, 'ai');
+            this.sayHeroLine(1, 'skill');
+            this.processing = false;
+            this.render();
+            return;
+        }
         const response = AI.decideNanmanDodge(this);
         if (response.dodge) {
             if (response.zhangba) {
@@ -2303,8 +2322,18 @@ const Game = {
         this.log(`${this.players[sourceIdx].hero.name}使用【南蛮入侵】`, 'ai');
         this.sayHeroLine(1, 'attack');
         this.render();
-        const response = await this.askPlayerNanman();
+
         const target = this.players[targetIdx];
+        // 帷幕（贾诩）：不能成为黑色锦囊牌目标
+        if (hasSkill(target.hero, '帷幕')) {
+            this.log(`你免疫【南蛮入侵】（帷幕）`, 'player');
+            this.sayHeroLine(0, 'skill');
+            this.render();
+            await this.delay(800);
+            return;
+        }
+
+        const response = await this.askPlayerNanman();
         if (response.play) {
             if (response.zhangba) {
                 // 丈八蛇矛已经帮我们移除了卡牌
@@ -2863,8 +2892,16 @@ const Game = {
             return;
         }
         
+        // 火攻牌已从手牌移除，需要至少1张手牌展示
         if (source.hand.length === 0) {
-            this.log(`你没有手牌，火攻无效`, 'system');
+            this.log(`你没有手牌展示，火攻无效`, 'system');
+            this.processing = false;
+            this.render();
+            return;
+        }
+        // 目标必须有手牌才能响应火攻
+        if (target.hand.length === 0) {
+            this.log(`${target.hero.name}没有手牌，火攻无效`, 'ai');
             this.processing = false;
             this.render();
             return;
@@ -2896,8 +2933,15 @@ const Game = {
             return;
         }
         
+        // 火攻牌已从手牌移除，需要至少1张手牌展示
         if (source.hand.length === 0) {
-            this.log(`${source.hero.name}没有手牌，火攻无效`, 'system');
+            this.log(`${source.hero.name}没有手牌展示，火攻无效`, 'system');
+            this.render();
+            return;
+        }
+        // 目标必须有手牌才能响应火攻
+        if (target.hand.length === 0) {
+            this.log(`你没有手牌，对方火攻无效`, 'system');
             this.render();
             return;
         }

@@ -609,6 +609,13 @@ Object.assign(MultiGame, {
             if (this.gameOver) break;
             if (target.dead) continue;
             const targetIdx = this.players.indexOf(target);
+            // 帷幕（贾诩）：不能成为黑色锦囊牌目标
+            if (hasSkill(target.hero, '帷幕')) {
+                this.log(`${target.hero.name}免疫【南蛮入侵】（帷幕）`, targetIdx === 0 ? 'player' : 'ai');
+                this.render();
+                await this.delay(500);
+                continue;
+            }
             let response;
             if (target.isAI) {
                 await this.delay(800);
@@ -952,7 +959,10 @@ Object.assign(MultiGame, {
         const target = this.players[targetIdx];
         this.log(`${source.hero.name}使用【火攻】，目标：${target.hero.name}`, sourceIdx === 0 ? 'player' : 'ai');
         this.sayHeroLine(sourceIdx, 'skill');
-        if (source.hand.length === 0) { this.log(`没有手牌，火攻无效`, 'system'); return; }
+        // 火攻牌已从手牌移除，需要至少1张手牌展示
+        if (source.hand.length === 0) { this.log(`${source.hero.name}没有手牌展示，火攻无效`, 'system'); this.render(); return; }
+        // 目标必须有手牌才能响应火攻
+        if (target.hand.length === 0) { this.log(`${target.hero.name}没有手牌，火攻无效`, targetIdx === 0 ? 'player' : 'ai'); this.render(); return; }
         this.log(`${source.hero.name}展示一张手牌发动火攻`, sourceIdx === 0 ? 'player' : 'ai');
         this.render();
         await this.delay(800);
@@ -1455,8 +1465,8 @@ Object.assign(MultiGame, {
                 if (toDiscard.length >= 2) {
                     toDiscard.forEach(c => { player.hand = player.hand.filter(h => h.id !== c.id); this.discardPile.push(c); });
                     this.heal(playerIdx, 1);
-                    // 治疗最残血的友方
-                    const allies = this.players.filter(p => !p.dead && p !== player && p.hp < p.maxHp);
+                    // 结姻仅限男性角色，找最残血的受伤男性
+                    const allies = this.players.filter(p => !p.dead && p !== player && p.hp < p.maxHp && p.hero.gender !== 'female');
                     if (allies.length > 0) {
                         let ally = allies[0];
                         for (const a of allies) if (a.hp < ally.hp) ally = a;
@@ -1484,6 +1494,15 @@ Object.assign(MultiGame, {
     confirmJieyin(targetIdx) {
         if (this.jieyinCards.length < 2) { this.log(`请选择两张牌`, 'system'); return; }
         const player = this.players[0];
+        // 结姻仅限男性角色
+        if (targetIdx >= 0 && this.players[targetIdx].hero.gender === 'female') {
+            this.log(`结姻只能对男性角色发动`, 'system');
+            this.jieyinCards = [];
+            this.jieyinMode = false;
+            if (this.jieyinResolver) { const r = this.jieyinResolver; this.jieyinResolver = null; r(); }
+            this.render();
+            return;
+        }
         this.jieyinCards.forEach(c => { player.hand = player.hand.filter(h => h.id !== c.id); this.discardPile.push(c); });
         if (player.hp < player.maxHp) this.heal(0, 1);
         if (targetIdx >= 0 && this.players[targetIdx].hp < this.players[targetIdx].maxHp) this.heal(targetIdx, 1);

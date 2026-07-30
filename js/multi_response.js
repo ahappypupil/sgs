@@ -22,6 +22,10 @@ Object.assign(MultiGame, {
             if (card && card.defKey === 'lebusishu') {
                 aliveOpponents = aliveOpponents.filter(p => !hasSkill(p.hero, '谦逊'));
             }
+            // 火攻：只能对有手牌的角色使用
+            if (card && card.defKey === 'huogong') {
+                aliveOpponents = aliveOpponents.filter(p => p.hand.length > 0);
+            }
             // 帷幕（贾诩）：不能成为黑色锦囊牌目标
             if (card && card.type === 'trick' && !card.isRed) {
                 aliveOpponents = aliveOpponents.filter(p => !hasSkill(p.hero, '帷幕'));

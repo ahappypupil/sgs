@@ -117,7 +117,7 @@ const MultiAI = {
 
         // 优先级8: 火攻
         const huogong = this.findCard(ai.hand, 'huogong');
-        if (huogong && ai.hand.length > 1) {
+        if (huogong && ai.hand.length > 1 && target.hand.length > 0) {
             // 帷幕（贾诩）：不能成为黑色锦囊牌目标
             if (!(hasSkill(target.hero, '帷幕') && !huogong.isRed)) {
                 return { action: 'play', card: huogong, target: target.idx };

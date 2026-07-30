@@ -113,7 +113,7 @@ const AI = {
 
         // 优先级5.6: 火攻（直接伤害）
         const huogong = this.findCard(ai.hand, 'huogong');
-        if (huogong && ai.hand.length > 1 && !(hasSkill(player.hero, '帷幕') && !huogong.isRed)) {
+        if (huogong && ai.hand.length > 1 && player.hand.length > 0 && !(hasSkill(player.hero, '帷幕') && !huogong.isRed)) {
             return { action: 'play', card: huogong, target: 0 };
         }
 
