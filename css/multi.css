@@ -443,14 +443,16 @@
         font-size: 28px;
     }
 
+    /* 手机端禁用卡牌transition，防止换行/尺寸变化引起抖动 */
+    .card {
+        transition: none !important;
+        min-width: 48px;
+    }
+
     /* 手牌允许换行 */
     .hand-cards {
         flex-wrap: wrap;
         gap: 3px;
-    }
-
-    .card {
-        min-width: 48px;
     }
 
     /* 手机端卡牌名称改为横排 */

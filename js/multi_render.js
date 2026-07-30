@@ -254,7 +254,25 @@ Object.assign(MultiGame, {
                 btn.addEventListener('click', () => this.executeJieyin(0));
                 actionBar.appendChild(btn);
             }
-
+            
+            // 丈八蛇矛
+            if (player.equipment.weapon && player.equipment.weapon.defKey === 'zhangbashemao' && player.hand.length >= 2) {
+                const canSlash = !this.hasSlashedThisTurn || this.canSlashUnlimited(player);
+                if (canSlash) {
+                    const zbBtn = document.createElement('button');
+                    zbBtn.className = 'action-btn';
+                    zbBtn.style.cssText = 'background:linear-gradient(135deg,#8B0000,#DC143C);color:#FFD700;font-weight:bold;border:2px solid #FFD700;';
+                    zbBtn.textContent = '发动丈八蛇矛';
+                    zbBtn.addEventListener('click', () => {
+                        this.zhangbaMode = true;
+                        this.zhangbaCards = [];
+                        this.log('发动【丈八蛇矛】——请选择2张手牌当【杀】使用', 'player');
+                        this.render();
+                    });
+                    actionBar.appendChild(zbBtn);
+                }
+            }
+            
             // 结束回合
             const endBtn = document.createElement('button');
             endBtn.className = 'action-btn';
@@ -348,6 +366,38 @@ Object.assign(MultiGame, {
                 });
                 actionBar.appendChild(confirmBtn);
             }
+        }
+
+        if (this.zhangbaMode) {
+            const info = document.createElement('span');
+            info.className = 'action-info-box';
+            info.textContent = `丈八蛇矛：已选${this.zhangbaCards.length}/2张`;
+            actionBar.appendChild(info);
+            if (this.zhangbaCards.length >= 2) {
+                const confirmBtn = document.createElement('button');
+                confirmBtn.className = 'action-btn green';
+                confirmBtn.textContent = '确认(当杀)';
+                confirmBtn.addEventListener('click', async () => {
+                    const targetIdx = await this.askPlayerSelectTarget('选择【杀】的目标', 0);
+                    if (targetIdx === -1) {
+                        this.zhangbaCards = [];
+                        this.zhangbaMode = false;
+                        this.render();
+                        return;
+                    }
+                    this.confirmZhangbaMulti(targetIdx);
+                });
+                actionBar.appendChild(confirmBtn);
+            }
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'action-btn';
+            cancelBtn.textContent = '取消';
+            cancelBtn.addEventListener('click', () => {
+                this.zhangbaMode = false;
+                this.zhangbaCards = [];
+                this.render();
+            });
+            actionBar.appendChild(cancelBtn);
         }
 
         if (this.guanxingMode) {

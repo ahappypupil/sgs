@@ -271,6 +271,11 @@ decideNanmanDodge(game) {
     const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
     const allShas = [...shas, ...longdanShans];
 
+    // 丈八蛇矛：没有杀但有2张手牌时，用2张牌当杀
+    if (allShas.length === 0 && ai.equipment.weapon && ai.equipment.weapon.defKey === 'zhangbashemao' && ai.hand.length >= 2) {
+        const zhangbaOptions = ai.hand.filter(c => c.defKey !== 'wuxiekeji');
+        if (zhangbaOptions.length >= 2) return { dodge: true, card: zhangbaOptions[0], zhangba: true, zhangbaCards: zhangbaOptions.slice(0, 2) };
+    }
     if (allShas.length === 0) return { dodge: false, card: null };
 
     // HP低时一定要出杀
@@ -322,6 +327,11 @@ decideWanjianDodge(game) {
         const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
         const allShas = [...shas, ...longdanShans];
         
+        // 丈八蛇矛：没有杀但有2张手牌时，用2张牌当杀
+        if (allShas.length === 0 && ai.equipment.weapon && ai.equipment.weapon.defKey === 'zhangbashemao' && ai.hand.length >= 2) {
+            const zhangbaOptions = ai.hand.filter(c => c.defKey !== 'wuxiekeji');
+            if (zhangbaOptions.length >= 2) return { play: true, card: zhangbaOptions[0], zhangba: true, zhangbaCards: zhangbaOptions.slice(0, 2) };
+        }
         if (allShas.length === 0) return { play: false, card: null };
         
         // HP低时尽量出杀

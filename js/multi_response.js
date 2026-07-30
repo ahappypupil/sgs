@@ -3,13 +3,17 @@
 
 Object.assign(MultiGame, {
     // ===== 目标选择 =====
-    askPlayerSelectTarget(prompt, sourceIdx, card) {
+    askPlayerSelectTarget(prompt, sourceIdx, card, excludeIdxs) {
         return new Promise((resolve) => {
             this.targetResolver = resolve;
             this.processing = true;
             this.render();
 
             let aliveOpponents = this.players.filter((p, i) => i !== sourceIdx && !p.dead);
+            // 排除指定索引
+            if (excludeIdxs) {
+                aliveOpponents = aliveOpponents.filter(p => !excludeIdxs.includes(this.players.indexOf(p)));
+            }
             // 谦逊（陆逊）：不能成为乐不思蜀目标
             if (card && card.defKey === 'lebusishu') {
                 aliveOpponents = aliveOpponents.filter(p => !hasSkill(p.hero, '谦逊'));
@@ -127,6 +131,21 @@ Object.assign(MultiGame, {
                 container.appendChild(cardEl);
             });
 
+            // 丈八蛇矛：没有真实杀但有2张手牌时
+            if (shas.length === 0 && longdanShans.length === 0 &&
+                player.equipment.weapon && player.equipment.weapon.defKey === 'zhangbashemao' && player.hand.length >= 2) {
+                const zhangbaOptions = player.hand.filter(c => c.defKey !== 'wuxiekeji');
+                if (zhangbaOptions.length >= 2) {
+                    const zbBtn = document.createElement('button');
+                    zbBtn.textContent = '发动【丈八蛇矛】';
+                    zbBtn.style.cssText = 'background:linear-gradient(135deg,#8B0000,#DC143C);color:#FFD700;font-size:14px;font-weight:bold;padding:10px 18px;border:2px solid #FFD700;border-radius:8px;cursor:pointer;margin:8px auto;display:block;';
+                    zbBtn.addEventListener('click', () => {
+                        this.handleZhangbaResponse(resolve, zhangbaOptions.slice(0, 2));
+                    });
+                    container.appendChild(zbBtn);
+                }
+            }
+
             document.getElementById('response-cancel').textContent = '不出杀（受1点伤害）';
             document.getElementById('response-cancel').style.display = '';
             document.getElementById('response-panel').classList.remove('hidden');
@@ -177,6 +196,21 @@ Object.assign(MultiGame, {
                 container.appendChild(cardEl);
             });
 
+            // 丈八蛇矛：没有真实杀但有2张手牌时
+            if (shas.length === 0 && longdanShans.length === 0 &&
+                player.equipment.weapon && player.equipment.weapon.defKey === 'zhangbashemao' && player.hand.length >= 2) {
+                const zhangbaOptions = player.hand.filter(c => c.defKey !== 'wuxiekeji');
+                if (zhangbaOptions.length >= 2) {
+                    const zbBtn = document.createElement('button');
+                    zbBtn.textContent = '发动【丈八蛇矛】';
+                    zbBtn.style.cssText = 'background:linear-gradient(135deg,#8B0000,#DC143C);color:#FFD700;font-size:14px;font-weight:bold;padding:10px 18px;border:2px solid #FFD700;border-radius:8px;cursor:pointer;margin:8px auto;display:block;';
+                    zbBtn.addEventListener('click', () => {
+                        this.handleZhangbaResponse(resolve, zhangbaOptions.slice(0, 2));
+                    });
+                    container.appendChild(zbBtn);
+                }
+            }
+
             document.getElementById('response-cancel').textContent = '不出杀（受1点伤害）';
             document.getElementById('response-cancel').style.display = '';
             document.getElementById('response-panel').classList.remove('hidden');
@@ -221,6 +255,20 @@ Object.assign(MultiGame, {
             document.getElementById('response-panel').classList.remove('hidden');
             this.render();
         });
+    },
+
+    // 丈八蛇矛响应：自动选2张牌当杀
+    handleZhangbaResponse(resolve, cards) {
+        const player = this.players[0];
+        player.hand = player.hand.filter(c => !cards.find(zc => zc.id === c.id));
+        cards.forEach(c => this.discardPile.push(c));
+        this.log('你发动【丈八蛇矛】，将两张牌当【杀】', 'player');
+        this.sayHeroLine(0, 'skill');
+        this.responseResolver = null;
+        this.responseMode = null;
+        this.responseSelectedCards = [];
+        document.getElementById('response-panel').classList.add('hidden');
+        resolve({ play: true, card: null, zhangba: true });
     },
 
     // ===== 询问玩家桃自救 =====

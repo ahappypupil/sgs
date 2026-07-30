@@ -253,6 +253,11 @@ const MultiAI = {
         const ai = game.players[targetIdx];
         const shas = ai.hand.filter(c => c.defKey === 'sha');
 
+        // 丈八蛇矛：没有杀但有2张手牌时，用2张牌当杀
+        if (shas.length === 0 && ai.equipment.weapon && ai.equipment.weapon.defKey === 'zhangbashemao' && ai.hand.length >= 2) {
+            const zhangbaOptions = ai.hand.filter(c => c.defKey !== 'wuxiekeji');
+            if (zhangbaOptions.length >= 2) return { dodge: true, card: zhangbaOptions[0], zhangba: true, zhangbaCards: zhangbaOptions.slice(0, 2) };
+        }
         if (shas.length === 0) return { dodge: false, card: null };
         if (ai.hp <= 2) return { dodge: true, card: shas[0] };
         if (ai.hand.length > 4) return { dodge: true, card: shas[0] };
@@ -289,6 +294,11 @@ const MultiAI = {
         const longdanShans = hasSkill(ai.hero, '龙胆') ? ai.hand.filter(c => c.defKey === 'shan') : [];
         const allShas = [...shas, ...longdanShans];
 
+        // 丈八蛇矛：没有杀但有2张手牌时，用2张牌当杀
+        if (allShas.length === 0 && ai.equipment.weapon && ai.equipment.weapon.defKey === 'zhangbashemao' && ai.hand.length >= 2) {
+            const zhangbaOptions = ai.hand.filter(c => c.defKey !== 'wuxiekeji');
+            if (zhangbaOptions.length >= 2) return { play: true, card: zhangbaOptions[0], zhangba: true, zhangbaCards: zhangbaOptions.slice(0, 2) };
+        }
         if (allShas.length === 0) return { play: false, card: null };
         if (ai.hp <= 2) return { play: true, card: allShas[0] };
         if (allShas.length >= 2) return { play: true, card: allShas[0] };

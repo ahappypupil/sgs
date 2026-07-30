@@ -30,6 +30,8 @@ const MultiGame = {
     guanxingCards: [],
     guanxingSelected: [],
     guanxingResolver: null,
+    zhangbaMode: false,
+    zhangbaCards: [],
     responseResolver: null,
     responseMode: null,
     responseSelectedCards: [],
@@ -550,7 +552,6 @@ const MultiGame = {
             player.hand.push(card);
             this.log(`${player.hero.name}发动【闭月】，摸了1张牌`, playerIdx === 0 ? 'player' : 'ai');
             this.sayHeroLine(playerIdx, 'skill');
-            this.render();
         }
 
         this.log(`${player.hero.name}回合结束`, playerIdx === 0 ? 'player' : 'ai');
@@ -690,6 +691,17 @@ const MultiGame = {
             this.render();
             return;
         }
+        // 丈八蛇矛模式
+        if (this.zhangbaMode) {
+            const idx = this.zhangbaCards.findIndex(c => c.id === card.id);
+            if (idx >= 0) {
+                this.zhangbaCards.splice(idx, 1);
+            } else {
+                this.zhangbaCards.push(card);
+            }
+            this.render();
+            return;
+        }
         if (this.processing) return;
         if (this.currentPlayer !== 0) return;
 
@@ -752,6 +764,9 @@ const MultiGame = {
             // 先选目标
             targetIdx = await this.askPlayerSelectTarget('选择杀的目标', 0);
             if (targetIdx === -1) return;
+            // 方天画戟：判断是否为最后一张手牌（移除前）
+            const isLastCard = player.hand.length === 1;
+            const hasFangtian = player.equipment.weapon && player.equipment.weapon.defKey === 'fangtianhuaji';
             // 选好目标后再从手牌移除
             player.hand = player.hand.filter(c => c.id !== card.id);
             this.discardPile.push(card);
@@ -765,6 +780,16 @@ const MultiGame = {
             }
             this.render();
             await this.resolveSha(0, targetIdx, effectiveCard);
+            // 方天画戟：最后一张手牌是杀时可额外指定一个目标
+            if (hasFangtian && isLastCard && !this.gameOver) {
+                this.log('你发动【方天画戟】，可额外指定一个目标', 'player');
+                this.sayHeroLine(0, 'skill');
+                this.render();
+                const secondTarget = await this.askPlayerSelectTarget('【方天画戟】选择额外目标（点击空白取消）', 0, null, [targetIdx]);
+                if (secondTarget !== -1) {
+                    await this.resolveSha(0, secondTarget, effectiveCard);
+                }
+            }
             return;
         }
 
@@ -1108,6 +1133,8 @@ const MultiGame = {
         this.guanxingMode = false;
         this.guanxingCards = [];
         this.guanxingSelected = [];
+        this.zhangbaMode = false;
+        this.zhangbaCards = [];
         this.guanxingResolver = null;
         this.targetResolver = null;
         this.ganglieDiscardResolver = null;

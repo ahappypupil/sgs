@@ -30,6 +30,8 @@ const Game = {
     guanxingResolver: null,
     liuliMode: false,
     liuliResolver: null,
+    zhangbaMode: false,
+    zhangbaCards: [],
     responseResolver: null,
     responseMode: null, // 'dodge', 'duel', 'nanman', 'wanjian', 'peach', 'rende'
     responseSelectedCards: [],
@@ -686,6 +688,8 @@ const Game = {
         this.hasUsedQingnangThisTurn = false;
         this.hasUsedJieyinThisTurn = false;
         this.hasUsedGuanxingThisTurn = false;
+        this.zhangbaMode = false;
+        this.zhangbaCards = [];
         this.processing = false;
         this.log(`你的回合开始`, 'player');
         this.sayHeroLine(0, 'turnStart');
@@ -776,7 +780,6 @@ const Game = {
             this.players[playerIdx].hand.push(card);
             this.log(`${this.players[playerIdx].hero.name}发动【闭月】，摸了1张牌`, playerIdx === 0 ? 'player' : 'ai');
             this.sayHeroLine(playerIdx, 'skill');
-            this.render();
         }
         if (playerIdx === 0) {
             this.log(`你的回合结束`, 'player');
@@ -1486,6 +1489,30 @@ const Game = {
         this.render();
     },
 
+    // 丈八蛇矛确认出杀
+    confirmZhangba() {
+        if (this.zhangbaCards.length !== 2) {
+            this.log('请选择两张牌', 'system');
+            return;
+        }
+        const player = this.players[0];
+        const cards = this.zhangbaCards;
+        player.hand = player.hand.filter(h => !cards.find(zc => zc.id === h.id));
+        cards.forEach(c => this.discardPile.push(c));
+        this.log('你发动【丈八蛇矛】，将两张牌当【杀】使用', 'player');
+        this.sayHeroLine(0, 'skill');
+        this.hasSlashedThisTurn = true;
+        this.zhangbaCards = [];
+        this.zhangbaMode = false;
+        this.render();
+        this.resolveShaFromPlayer(0, 1, {
+            name: '杀', defKey: 'sha', type: 'basic',
+            suit: cards[0].suit, number: cards[0].number,
+            isRed: cards[0].isRed || cards[1].isRed, isBlack: cards[0].isBlack || cards[1].isBlack,
+            _zhangba: true
+        });
+    },
+
     // 询问玩家是否使用反间给的牌
     askPlayerFanjianChoice(card) {
         return new Promise((resolve) => {
@@ -1653,6 +1680,17 @@ const Game = {
                 this.jieyinCards.splice(idx, 1);
             } else {
                 this.jieyinCards.push(card);
+            }
+            this.render();
+            return;
+        }
+        // 丈八蛇矛模式：选两张牌当杀
+        if (this.zhangbaMode) {
+            const idx = this.zhangbaCards.findIndex(c => c.id === card.id);
+            if (idx >= 0) {
+                this.zhangbaCards.splice(idx, 1);
+            } else {
+                this.zhangbaCards.push(card);
             }
             this.render();
             return;
@@ -2159,14 +2197,21 @@ const Game = {
             await this.delay(1000);
             const response = AI.decideDuelResponse(this);
             if (response.play) {
-                current.hand = current.hand.filter(c => c.id !== response.card.id);
-                this.discardPile.push(response.card);
-                // 判断是否使用了龙胆（闪当杀）
-                const isLongdan = response.card.defKey === 'shan' && hasSkill(current.hero, '龙胆');
-                const skillText = isLongdan ? '（龙胆）' : '';
-                this.log(`${current.hero.name}出【杀】${skillText}`, 'ai');
-                if (isLongdan) this.sayHeroLine(currentIdx, 'skill');
-                else this.sayHeroLine(currentIdx, 'dodge');
+                if (response.zhangba) {
+                    current.hand = current.hand.filter(c => !response.zhangbaCards.find(zc => zc.id === c.id));
+                    response.zhangbaCards.forEach(c => this.discardPile.push(c));
+                    this.log(`${current.hero.name}发动【丈八蛇矛】，将两张牌当【杀】`, 'ai');
+                    this.sayHeroLine(currentIdx, 'skill');
+                } else {
+                    current.hand = current.hand.filter(c => c.id !== response.card.id);
+                    this.discardPile.push(response.card);
+                    // 判断是否使用了龙胆（闪当杀）
+                    const isLongdan = response.card.defKey === 'shan' && hasSkill(current.hero, '龙胆');
+                    const skillText = isLongdan ? '（龙胆）' : '';
+                    this.log(`${current.hero.name}出【杀】${skillText}`, 'ai');
+                    if (isLongdan) this.sayHeroLine(currentIdx, 'skill');
+                    else this.sayHeroLine(currentIdx, 'dodge');
+                }
                 this.render();
                 await this.delay(800);
                 await this.juedouStepAsync(otherIdx, currentIdx, damageCard, false);
@@ -2178,14 +2223,18 @@ const Game = {
         } else {
             const response = await this.askPlayerDuel();
             if (response.play) {
-                this.players[0].hand = this.players[0].hand.filter(c => c.id !== response.card.id);
-                this.discardPile.push(response.card);
-                // 判断是否使用了龙胆（闪当杀）
-                const isLongdan = response.card.defKey === 'shan' && hasSkill(this.players[0].hero, '龙胆');
-                const skillText = isLongdan ? '（龙胆）' : '';
-                this.log(`你出【杀】${skillText}`, 'player');
-                if (isLongdan) this.sayHeroLine(0, 'skill');
-                else this.sayHeroLine(0, 'dodge');
+                if (response.zhangba) {
+                    // 丈八蛇矛已经帮我们移除了卡牌
+                } else {
+                    this.players[0].hand = this.players[0].hand.filter(c => c.id !== response.card.id);
+                    this.discardPile.push(response.card);
+                    // 判断是否使用了龙胆（闪当杀）
+                    const isLongdan = response.card.defKey === 'shan' && hasSkill(this.players[0].hero, '龙胆');
+                    const skillText = isLongdan ? '（龙胆）' : '';
+                    this.log(`你出【杀】${skillText}`, 'player');
+                    if (isLongdan) this.sayHeroLine(0, 'skill');
+                    else this.sayHeroLine(0, 'dodge');
+                }
                 this.render();
                 await this.delay(800);
                 await this.juedouStepAsync(otherIdx, currentIdx, damageCard, false);
@@ -2207,20 +2256,27 @@ const Game = {
         const target = this.players[targetIdx];
         const response = AI.decideNanmanDodge(this);
         if (response.dodge) {
-            target.hand = target.hand.filter(c => c.id !== response.card.id);
-            this.discardPile.push(response.card);
-            // AI使用无懈可击
-            if (response.useWuxie) {
-                this.log(`${target.hero.name}使用【无懈可击】抵消【南蛮入侵】`, 'ai');
+            if (response.zhangba) {
+                target.hand = target.hand.filter(c => !response.zhangbaCards.find(zc => zc.id === c.id));
+                response.zhangbaCards.forEach(c => this.discardPile.push(c));
+                this.log(`${target.hero.name}发动【丈八蛇矛】，将两张牌当【杀】抵挡`, 'ai');
                 this.sayHeroLine(1, 'skill');
-                this.processing = false;
-                this.render();
-                return;
+            } else {
+                target.hand = target.hand.filter(c => c.id !== response.card.id);
+                this.discardPile.push(response.card);
+                // AI使用无懈可击
+                if (response.useWuxie) {
+                    this.log(`${target.hero.name}使用【无懈可击】抵消【南蛮入侵】`, 'ai');
+                    this.sayHeroLine(1, 'skill');
+                    this.processing = false;
+                    this.render();
+                    return;
+                }
+                const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
+                this.log(`${target.hero.name}出【杀】${skillText}抵挡`, 'ai');
+                if (response.card.defKey === 'shan') this.sayHeroLine(1, 'skill');
+                else this.sayHeroLine(1, 'dodge');
             }
-            const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
-            this.log(`${target.hero.name}出【杀】${skillText}抵挡`, 'ai');
-            if (response.card.defKey === 'shan') this.sayHeroLine(1, 'skill');
-            else this.sayHeroLine(1, 'dodge');
             this.processing = false;
             this.render();
         } else {
@@ -2241,19 +2297,24 @@ const Game = {
         const response = await this.askPlayerNanman();
         const target = this.players[targetIdx];
         if (response.play) {
-            target.hand = target.hand.filter(c => c.id !== response.card.id);
-            this.discardPile.push(response.card);
-            // 无懈可击抵消锦囊效果
-            if (response.card.defKey === 'wuxiekeji') {
-                this.log(`你使用【无懈可击】抵消【南蛮入侵】`, 'player');
-                this.sayHeroLine(0, 'skill');
+            if (response.zhangba) {
+                // 丈八蛇矛已经帮我们移除了卡牌
                 this.render();
-                return;
+            } else {
+                target.hand = target.hand.filter(c => c.id !== response.card.id);
+                this.discardPile.push(response.card);
+                // 无懈可击抵消锦囊效果
+                if (response.card.defKey === 'wuxiekeji') {
+                    this.log(`你使用【无懈可击】抵消【南蛮入侵】`, 'player');
+                    this.sayHeroLine(0, 'skill');
+                    this.render();
+                    return;
+                }
+                const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
+                this.log(`你出【杀】${skillText}抵挡`, 'player');
+                if (response.card.defKey === 'shan') this.sayHeroLine(0, 'skill');
+                else this.sayHeroLine(0, 'dodge');
             }
-            const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
-            this.log(`你出【杀】${skillText}抵挡`, 'player');
-            if (response.card.defKey === 'shan') this.sayHeroLine(0, 'skill');
-            else this.sayHeroLine(0, 'dodge');
             this.render();
         } else {
             this.log(`你没有出杀，受到1点伤害`, 'player');
@@ -3591,10 +3652,38 @@ const Game = {
                 container.appendChild(cardEl);
             });
             
+            // 丈八蛇矛：没有真实杀但有2张手牌时，显示可发动
+            if (shas.length === 0 && longdanShans.length === 0 &&
+                player.equipment.weapon && player.equipment.weapon.defKey === 'zhangbashemao' && player.hand.length >= 2) {
+                const zhangbaOptions = player.hand.filter(c => c.defKey !== 'wuxiekeji');
+                if (zhangbaOptions.length >= 2) {
+                    const zhangbaBtn = document.createElement('button');
+                    zhangbaBtn.textContent = '发动【丈八蛇矛】💥';
+                    zhangbaBtn.className = 'skill-btn';
+                    zhangbaBtn.style.cssText = 'background: linear-gradient(135deg, #8B0000, #DC143C); color: #FFD700; font-size: 14px; font-weight: bold; padding: 10px 18px; border: 2px solid #FFD700; border-radius: 8px; cursor: pointer; margin: 8px auto; display: block;';
+                    zhangbaBtn.addEventListener('click', () => {
+                        this.handleZhangbaDuelResponse(resolve, zhangbaOptions.slice(0, 2));
+                    });
+                    container.appendChild(zhangbaBtn);
+                }
+            }
+            
             document.getElementById('response-cancel').textContent = '不出杀（受1点伤害）';
             document.getElementById('response-panel').classList.remove('hidden');
             this.render();
         });
+    },
+
+    handleZhangbaDuelResponse(resolve, cards) {
+        const player = this.players[0];
+        player.hand = player.hand.filter(c => !cards.find(zc => zc.id === c.id));
+        cards.forEach(c => this.discardPile.push(c));
+        this.log('你发动【丈八蛇矛】，将两张牌当【杀】', 'player');
+        this.sayHeroLine(0, 'skill');
+        this.responseResolver = null;
+        this.responseMode = null;
+        document.getElementById('response-panel').classList.add('hidden');
+        resolve({ play: true, card: null, zhangba: true });
     },
 
     confirmDuelResponse() {
@@ -3656,10 +3745,38 @@ const Game = {
                 container.appendChild(cardEl);
             });
             
+            // 丈八蛇矛：没有真实杀但有2张手牌时，显示可发动
+            if (shas.length === 0 && longdanShans.length === 0 &&
+                player.equipment.weapon && player.equipment.weapon.defKey === 'zhangbashemao' && player.hand.length >= 2) {
+                const zhangbaOptions = player.hand.filter(c => c.defKey !== 'wuxiekeji');
+                if (zhangbaOptions.length >= 2) {
+                    const zhangbaBtn = document.createElement('button');
+                    zhangbaBtn.textContent = '发动【丈八蛇矛】💥';
+                    zhangbaBtn.className = 'skill-btn';
+                    zhangbaBtn.style.cssText = 'background: linear-gradient(135deg, #8B0000, #DC143C); color: #FFD700; font-size: 14px; font-weight: bold; padding: 10px 18px; border: 2px solid #FFD700; border-radius: 8px; cursor: pointer; margin: 8px auto; display: block;';
+                    zhangbaBtn.addEventListener('click', () => {
+                        this.handleZhangbaNanmanResponse(resolve, zhangbaOptions.slice(0, 2));
+                    });
+                    container.appendChild(zhangbaBtn);
+                }
+            }
+            
             document.getElementById('response-cancel').textContent = '不出杀（受1点伤害）';
             document.getElementById('response-panel').classList.remove('hidden');
             this.render();
         });
+    },
+
+    handleZhangbaNanmanResponse(resolve, cards) {
+        const player = this.players[0];
+        player.hand = player.hand.filter(c => !cards.find(zc => zc.id === c.id));
+        cards.forEach(c => this.discardPile.push(c));
+        this.log('你发动【丈八蛇矛】，将两张牌当【杀】抵挡', 'player');
+        this.sayHeroLine(0, 'skill');
+        this.responseResolver = null;
+        this.responseMode = null;
+        document.getElementById('response-panel').classList.add('hidden');
+        resolve({ play: true, card: null, zhangba: true });
     },
 
     confirmNanmanResponse() {
@@ -4174,6 +4291,45 @@ const Game = {
                     this.executeJieyin(0);
                 });
                 actionBar.appendChild(btn);
+            }
+            
+            // 丈八蛇矛
+            if (player.equipment.weapon && player.equipment.weapon.defKey === 'zhangbashemao' && player.hand.length >= 2) {
+                const canSlash = !this.hasSlashedThisTurn || this.canSlashUnlimited(player);
+                if (canSlash && !this.zhangbaMode) {
+                    const zbBtn = document.createElement('button');
+                    zbBtn.className = 'action-btn';
+                    zbBtn.style.cssText = 'background: linear-gradient(135deg, #8B0000, #DC143C); color: #FFD700; font-weight: bold; border: 2px solid #FFD700;';
+                    zbBtn.textContent = '发动丈八蛇矛';
+                    zbBtn.addEventListener('click', () => {
+                        this.zhangbaMode = true;
+                        this.zhangbaCards = [];
+                        this.log('发动【丈八蛇矛】——请选择2张手牌当【杀】使用', 'player');
+                        this.render();
+                    });
+                    actionBar.appendChild(zbBtn);
+                }
+                if (this.zhangbaMode) {
+                    const confirmBtn = document.createElement('button');
+                    confirmBtn.className = 'action-btn green';
+                    confirmBtn.textContent = `确认(${this.zhangbaCards.length}/2)`;
+                    confirmBtn.disabled = this.zhangbaCards.length !== 2;
+                    confirmBtn.addEventListener('click', () => {
+                        if (this.zhangbaCards.length === 2) {
+                            this.confirmZhangba();
+                        }
+                    });
+                    actionBar.appendChild(confirmBtn);
+                    const cancelBtn = document.createElement('button');
+                    cancelBtn.className = 'action-btn';
+                    cancelBtn.textContent = '取消';
+                    cancelBtn.addEventListener('click', () => {
+                        this.zhangbaMode = false;
+                        this.zhangbaCards = [];
+                        this.render();
+                    });
+                    actionBar.appendChild(cancelBtn);
+                }
             }
             
             // 结束回合
