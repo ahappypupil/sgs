@@ -3,7 +3,7 @@
 
 Object.assign(MultiGame, {
     // ===== 目标选择 =====
-    askPlayerSelectTarget(prompt, sourceIdx, card, excludeIdxs) {
+    askPlayerSelectTarget(prompt, sourceIdx, card, excludeIdxs, maleOnly) {
         return new Promise((resolve) => {
             this.targetResolver = resolve;
             this.processing = true;
@@ -13,6 +13,10 @@ Object.assign(MultiGame, {
             // 排除指定索引
             if (excludeIdxs) {
                 aliveOpponents = aliveOpponents.filter(p => !excludeIdxs.includes(this.players.indexOf(p)));
+            }
+            // 只显示男性角色（用于离间）
+            if (maleOnly) {
+                aliveOpponents = aliveOpponents.filter(p => p.hero.gender !== 'female');
             }
             // 谦逊（陆逊）：不能成为乐不思蜀目标
             if (card && card.defKey === 'lebusishu') {

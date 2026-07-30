@@ -205,15 +205,31 @@ Object.assign(MultiGame, {
     // 离间（貂蝉）：弃一张牌，令两名男性角色进行决斗
     async executeLijian(playerIdx) {
         const player = this.players[playerIdx];
+
+        // 找到场上其他存活的男性角色（至少2人）
+        const validMales = this.players.filter((p, i) =>
+            i !== playerIdx && !p.dead && p.hero.gender !== 'female'
+        );
+
+        if (validMales.length < 2) {
+            this.log(`场上其他男性角色不足2人，无法发动【离间】`, 'system');
+            return;
+        }
+
         this.hasUsedLijianThisTurn = true;
         this.sayHeroLine(playerIdx, 'skill');
+
         if (player.isAI) {
             const discardCard = player.hand[0];
             player.hand = player.hand.filter(c => c.id !== discardCard.id);
             this.discardPile.push(discardCard);
             this.log(`${player.hero.name}发动【离间】，弃置一张牌`, 'ai');
-            const targetIdx = this.players.findIndex((p, i) => i !== playerIdx && !p.dead);
-            if (targetIdx >= 0) await this.resolveJuedou(playerIdx, targetIdx, null);
+            // AI随机选择2位男性进行决斗
+            const shuffled = [...validMales].sort(() => Math.random() - 0.5);
+            const male1Idx = this.players.indexOf(shuffled[0]);
+            const male2Idx = this.players.indexOf(shuffled[1]);
+            this.log(`${shuffled[0].hero.name}与${shuffled[1].hero.name}进行【决斗】`, 'ai');
+            await this.resolveJuedou(male1Idx, male2Idx, null);
         } else {
             this.log(`请选择一张手牌弃置（离间）`, 'system');
             this.lijianMode = true;

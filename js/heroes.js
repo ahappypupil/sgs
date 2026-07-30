@@ -259,6 +259,7 @@ const HEROES = [
     {
         id: 'huangyueying',
         name: '黄月英',
+        gender: 'female',
         faction: FACTION.SHU,
         role: ROLE.MINISTER,
         maxHp: 3,
@@ -287,6 +288,7 @@ const HEROES = [
     {
         id: 'sunshangxiang',
         name: '孙尚香',
+        gender: 'female',
         faction: FACTION.SHU,
         role: ROLE.MINISTER,
         maxHp: 3,
@@ -533,6 +535,7 @@ const HEROES = [
     {
         id: 'zhenji',
         name: '甄姬',
+        gender: 'female',
         faction: FACTION.WEI,
         role: ROLE.MINISTER,
         maxHp: 3,
@@ -713,6 +716,7 @@ const HEROES = [
     {
         id: 'daqiao',
         name: '大乔',
+        gender: 'female',
         faction: FACTION.WU,
         role: ROLE.MINISTER,
         maxHp: 3,
@@ -779,6 +783,7 @@ const HEROES = [
     {
         id: 'xiaoqiao',
         name: '小乔',
+        gender: 'female',
         faction: FACTION.WU,
         role: ROLE.MINISTER,
         maxHp: 3,
@@ -842,6 +847,7 @@ const HEROES = [
     {
         id: 'diaochan',
         name: '貂蝉',
+        gender: 'female',
         faction: FACTION.QUN,
         role: ROLE.MINISTER,
         maxHp: 3,

@@ -627,14 +627,9 @@ const MultiGame = {
             player.hand = player.hand.filter(c => c.id !== card.id);
             this.discardPile.push(card);
             this.log(`你弃置了【${card.name}】发动【离间】`, 'player');
+            this.lijianMode = false;
             this.render();
-            if (this.lijianResolver) {
-                const r = this.lijianResolver; this.lijianResolver = null;
-                // 简化：选择第一个存活的对手作为决斗目标
-                const targetIdx = this.players.findIndex((p, i) => i !== 0 && !p.dead);
-                if (targetIdx >= 0) this.resolveJuedou(0, targetIdx, null);
-                r();
-            }
+            this.selectLijianTargets();
             return;
         }
         // 反间模式：选择一张牌给对手
@@ -1226,6 +1221,23 @@ const MultiGame = {
         if (playerIdx === 0) area = document.getElementById('player-area');
         else area = document.querySelector(`.opponent-card[data-idx="${playerIdx}"]`);
         if (area) { area.classList.add('flash-damage'); setTimeout(() => area.classList.remove('flash-damage'), 500); }
+    },
+
+    // 离间目标选择：依次选择两位男性角色
+    async selectLijianTargets() {
+        const target1Idx = await this.askPlayerSelectTarget('离间：请选择第一位男性角色', 0, null, null, true);
+        if (target1Idx < 0) {
+            if (this.lijianResolver) { const r = this.lijianResolver; this.lijianResolver = null; r(); }
+            return;
+        }
+        const target2Idx = await this.askPlayerSelectTarget('离间：请选择第二位男性角色', 0, null, [target1Idx], true);
+        if (target2Idx < 0) {
+            if (this.lijianResolver) { const r = this.lijianResolver; this.lijianResolver = null; r(); }
+            return;
+        }
+        this.log(`${this.players[target1Idx].hero.name}与${this.players[target2Idx].hero.name}进行【决斗】`, 'player');
+        await this.resolveJuedou(target1Idx, target2Idx, null);
+        if (this.lijianResolver) { const r = this.lijianResolver; this.lijianResolver = null; r(); }
     }
 };
 

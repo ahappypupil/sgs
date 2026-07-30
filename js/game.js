@@ -1123,19 +1123,28 @@ const Game = {
     },
 
     // 离间（貂蝉）：弃一张牌，令两名男性角色进行决斗
+    // 1v1简化版：若对手为男性，弃一张牌后双方决斗
     async executeLijian(playerIdx) {
         const player = this.players[playerIdx];
+        const opponentIdx = playerIdx === 0 ? 1 : 0;
+        const opponent = this.players[opponentIdx];
+
+        // 对手非男性则无法发动
+        if (opponent.hero.gender === 'female') {
+            this.log(`对方非男性角色，无法发动【离间】`, 'system');
+            return;
+        }
+
         this.hasUsedLijianThisTurn = true;
         this.sayHeroLine(playerIdx, 'skill');
-        // 简化：1v1中弃一张牌后与对方决斗
+
         if (player.isAI) {
             const discardCard = player.hand[0];
             player.hand = player.hand.filter(c => c.id !== discardCard.id);
             this.discardPile.push(discardCard);
-            this.log(`${player.hero.name}发动【离间】，弃置一张牌`, 'ai');
-            await this.resolveJuedou(playerIdx, playerIdx === 0 ? 1 : 0, null);
+            this.log(`${player.hero.name}发动【离间】，弃置一张牌，与你决斗`, 'ai');
+            await this.resolveJuedou(playerIdx, opponentIdx, null);
         } else {
-            // 玩家弃一张牌
             this.log(`请选择一张手牌弃置（离间）`, 'system');
             this.lijianMode = true;
             this.render();
