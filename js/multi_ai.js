@@ -364,6 +364,54 @@ const MultiAI = {
     },
 
     /**
+     * AI决定是否使用无懈可击（多人版，需指定AI索引）
+     */
+    decideWuxiekeji(game, playerIdx, cardName) {
+        const ai = game.players[playerIdx];
+        const wuxie = ai.hand.find(c => c.defKey === 'wuxiekeji');
+        if (!wuxie) return { useWuxie: false, card: null };
+        const threatLevel = this.getCardThreatLevel(cardName, ai);
+        if (threatLevel >= 3) {
+            return { useWuxie: true, card: wuxie };
+        }
+        if (threatLevel === 2) {
+            if (ai.hp <= 2 || ai.hand.length <= 3) {
+                return { useWuxie: true, card: wuxie };
+            }
+        }
+        if (Math.random() < 0.3) {
+            return { useWuxie: true, card: wuxie };
+        }
+        return { useWuxie: false, card: null };
+    },
+
+    getCardThreatLevel(cardName, ai) {
+        const threatMap = {
+            '乐不思蜀': 5,
+            '顺手牵羊': 4,
+            '过河拆桥': 3,
+            '决斗': 3,
+            '火攻': 3,
+            '南蛮入侵': 2,
+            '万箭齐发': 2,
+            '桃园结义': 1,
+            '五谷丰登': 1,
+        };
+        let level = threatMap[cardName] || 2;
+        if (ai.hp <= 2) {
+            if (['决斗', '火攻', '南蛮入侵', '万箭齐发'].includes(cardName)) {
+                level = Math.min(5, level + 1);
+            }
+        }
+        if (ai.hand.length <= 2) {
+            if (['顺手牵羊', '过河拆桥'].includes(cardName)) {
+                level = Math.min(5, level + 1);
+            }
+        }
+        return level;
+    },
+
+    /**
      * AI刚烈触发
      */
     decideGanglie(game, playerIdx) {

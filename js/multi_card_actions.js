@@ -60,7 +60,10 @@ Object.assign(MultiGame, {
                 await this.resolveWanjian(sourceIdx);
                 break;
             case 'lebusishu':
-                this.resolveLebusishu(sourceIdx, targetIdx);
+                await this.resolveLebusishu(sourceIdx, targetIdx);
+                break;
+            case 'shandian':
+                this.resolveShandian(sourceIdx);
                 break;
             case 'huogong':
                 await this.resolveHuogong(sourceIdx, targetIdx);
@@ -123,7 +126,10 @@ Object.assign(MultiGame, {
                 await this.resolveWanjian(sourceIdx);
                 break;
             case 'lebusishu':
-                this.resolveLebusishu(sourceIdx, targetIdx);
+                await this.resolveLebusishu(sourceIdx, targetIdx);
+                break;
+            case 'shandian':
+                this.resolveShandian(sourceIdx);
                 break;
             case 'huogong':
                 await this.resolveHuogong(sourceIdx, targetIdx);
@@ -715,11 +721,29 @@ Object.assign(MultiGame, {
     },
 
     // ===== 乐不思蜀 =====
-    resolveLebusishu(sourceIdx, targetIdx) {
+    async resolveLebusishu(sourceIdx, targetIdx) {
         const source = this.players[sourceIdx];
         const target = this.players[targetIdx];
         this.log(`${source.hero.name}使用【乐不思蜀】，目标：${target.hero.name}`, sourceIdx === 0 ? 'player' : 'ai');
         this.sayHeroLine(sourceIdx, 'skill');
+        this.render();
+        
+        // 询问目标是否使用无懈可击
+        let wuxieResponse = { useWuxie: false };
+        if (target.isAI) {
+            wuxieResponse = MultiAI.decideWuxiekeji(this, targetIdx, '乐不思蜀');
+        } else {
+            wuxieResponse = await this.askPlayerWuxiekeji('乐不思蜀');
+        }
+        if (wuxieResponse.useWuxie) {
+            target.hand = target.hand.filter(c => c.id !== wuxieResponse.card.id);
+            this.discardPile.push(wuxieResponse.card);
+            this.log(`${target.hero.name}使用【无懈可击】抵消【乐不思蜀】`, targetIdx === 0 ? 'player' : 'ai');
+            this.sayHeroLine(targetIdx, 'skill');
+            this.render();
+            return;
+        }
+        
         target.lebusishu = true;
         this.render();
     },
@@ -745,6 +769,55 @@ Object.assign(MultiGame, {
             this.log(`判定非红桃，乐不思蜀生效，跳过出牌阶段！`, 'system');
             return true;
         }
+    },
+
+    // 闪电判定
+    async processShandian(playerIdx) {
+        const player = this.players[playerIdx];
+        if (!player.shandian) return false;
+        if (player.dead) return false;
+        player.shandian = false;
+        this.log(`${player.hero.name}进行【闪电】判定...`, 'system');
+        this.render();
+        await this.delay(1200);
+        const judgeCard = this.drawCard();
+        this.discardPile.push(judgeCard);
+        this.log(`判定结果：${judgeCard.suit}${judgeCard.number}`, 'system');
+        this.render();
+        await this.delay(800);
+        // 天妒/鬼才处理
+        const finalJudgeCard = await this.processJudgeCard(playerIdx, judgeCard);
+        if (finalJudgeCard.suit === SUIT.SPADE && finalJudgeCard.number >= 2 && finalJudgeCard.number <= 9) {
+            this.log(`判定为黑桃${finalJudgeCard.number}，闪电命中！`, 'system');
+            // 闪电命中：受到3点雷电伤害
+            player.hp -= 3;
+            this.log(`${player.hero.name}受到3点雷电伤害（${player.hp}/${player.maxHp}）`, 'damage');
+            this.sayHeroLine(playerIdx, 'damage');
+            this.flashDamage(playerIdx);
+            this.render();
+            await this.delay(500);
+            if (player.hp <= 0) await this.checkDying(playerIdx);
+            return true;
+        } else {
+            this.log(`判定不命中，闪电移至下家`, 'system');
+            // 闪电不命中，移至下家
+            let nextIdx = (playerIdx + 1) % this.playerCount;
+            while (this.players[nextIdx].dead) {
+                nextIdx = (nextIdx + 1) % this.playerCount;
+            }
+            this.players[nextIdx].shandian = true;
+            this.render();
+            await this.delay(400);
+            return false;
+        }
+    },
+
+    // 使用闪电牌：放置在自己身上
+    resolveShandian(sourceIdx) {
+        const source = this.players[sourceIdx];
+        source.shandian = true;
+        this.log(`${source.hero.name}使用了【闪电】`, sourceIdx === 0 ? 'player' : 'ai');
+        this.render();
     },
 
     // ===== 洛神技能（甄姬）- 回合开始阶段进行判定 =====

@@ -46,7 +46,8 @@ Object.assign(MultiGame, {
             });
 
             let statusHtml = '';
-            if (p.lebusishu) statusHtml += '<span class="opponent-status-tag">乐</span>';
+            if (p.lebusishu) statusHtml += '<span class="opponent-status-tag" style="background:#8B4513;color:#FFD700;">乐</span>';
+            if (p.shandian) statusHtml += '<span class="opponent-status-tag" style="background:#4B0082;color:#FFD700;">电</span>';
 
             let handPreview = '';
             const showCount = Math.min(p.hand.length, 8);
@@ -122,6 +123,13 @@ Object.assign(MultiGame, {
             leTag.style.cssText = 'background:#8B4513;color:#FFD700;border-color:#8B4513;';
             leTag.textContent = '乐不思蜀';
             skillsDiv.appendChild(leTag);
+        }
+        if (player.shandian) {
+            const sdTag = document.createElement('span');
+            sdTag.className = 'skill-tag';
+            sdTag.style.cssText = 'background:#4B0082;color:#FFD700;border-color:#4B0082;';
+            sdTag.textContent = '闪电';
+            skillsDiv.appendChild(sdTag);
         }
 
         // 装备

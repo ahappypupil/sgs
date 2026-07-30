@@ -340,7 +340,7 @@ const MultiGame = {
         this.players.push({
             hero: playerHero, hp: playerHero.maxHp, maxHp: playerHero.maxHp,
             hand: [], equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
-            isAI: false, name: '你', lebusishu: false, dead: false, idx: 0
+            isAI: false, name: '你', lebusishu: false, shandian: false, dead: false, idx: 0
         });
         // AI玩家
         for (let i = 1; i < this.playerCount; i++) {
@@ -348,7 +348,7 @@ const MultiGame = {
             this.players.push({
                 hero: aiHero, hp: aiHero.maxHp, maxHp: aiHero.maxHp,
                 hand: [], equipment: { weapon: null, armor: null, mountPlus: null, mountMinus: null },
-                isAI: true, name: aiHero.name, lebusishu: false, dead: false, idx: i
+                isAI: true, name: aiHero.name, lebusishu: false, shandian: false, dead: false, idx: i
             });
         }
 
@@ -418,14 +418,30 @@ const MultiGame = {
         this.log(`${player.hero.name}摸了${drawCount}张牌`, playerIdx === 0 ? 'player' : 'ai');
         this.render();
 
-        // 乐不思蜀判定
-        const skipPlay = await this.processLebusishu(playerIdx);
-        if (skipPlay) {
-            this.log(`${player.hero.name}跳过出牌阶段`, 'system');
-            this.render();
-            await this.delay(500);
-            await this.endTurn(playerIdx);
-            return;
+        // 闪电判定（在乐不思蜀之前）
+        const shandianHit = await this.processShandian(playerIdx);
+        if (this.gameOver) return;
+        if (shandianHit) {
+            // 闪电命中后，继续乐不思蜀判定
+            const skipPlay = await this.processLebusishu(playerIdx);
+            if (skipPlay) {
+                this.log(`${player.hero.name}跳过出牌阶段`, 'system');
+                this.render();
+                await this.delay(500);
+                await this.endTurn(playerIdx);
+                return;
+            }
+            // 闪电命中但乐不思蜀不中，继续出牌
+        } else {
+            // 闪电未命中，进行乐不思蜀判定
+            const skipPlay = await this.processLebusishu(playerIdx);
+            if (skipPlay) {
+                this.log(`${player.hero.name}跳过出牌阶段`, 'system');
+                this.render();
+                await this.delay(500);
+                await this.endTurn(playerIdx);
+                return;
+            }
         }
 
         if (player.isAI) {
