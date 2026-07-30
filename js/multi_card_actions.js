@@ -69,7 +69,7 @@ Object.assign(MultiGame, {
                 this.resolveTaoyuan(sourceIdx);
                 break;
             case 'wugufengdeng':
-                this.resolveWugu(sourceIdx);
+                await this.resolveWugu(sourceIdx);
                 break;
             default:
                 if (card.type === 'equipment') {
@@ -132,7 +132,7 @@ Object.assign(MultiGame, {
                 this.resolveTaoyuan(sourceIdx);
                 break;
             case 'wugufengdeng':
-                this.resolveWugu(sourceIdx);
+                await this.resolveWugu(sourceIdx);
                 break;
             default:
                 if (card.type === 'equipment') {
@@ -403,6 +403,43 @@ Object.assign(MultiGame, {
             }
         }
 
+        // 雌雄双股剑：指定目标后触发
+        if (source.equipment.weapon && source.equipment.weapon.defKey === 'cixiongshuanggujian') {
+            let cixiongChoice;
+            if (source.isPlayer()) {
+                cixiongChoice = await this.askCixiong(targetIdx);
+            } else {
+                cixiongChoice = MultiAI.decideCixiong(source, target, this);
+            }
+            if (cixiongChoice === 'discard') {
+                if (target.hand.length > 0) {
+                    let cardToDiscard;
+                    if (target.isPlayer()) {
+                        cardToDiscard = await this.askPlayerDiscardCard('雌雄双股剑：弃置一张手牌');
+                    } else {
+                        cardToDiscard = MultiAI.chooseDiscard(this, targetIdx, 1)[0];
+                    }
+                    if (cardToDiscard) {
+                        target.hand = target.hand.filter(c => c.id !== cardToDiscard.id);
+                        this.discardPile.push(cardToDiscard);
+                        this.log(`${source.hero.name}发动【雌雄双股剑】，${target.hero.name}弃置【${cardToDiscard.name}】`, sourceIdx === 0 ? 'player' : 'ai');
+                        this.sayHeroLine(sourceIdx, 'skill');
+                        this.render();
+                        await this.delay(800);
+                    }
+                } else {
+                    this.log(`${target.hero.name}没有手牌可弃`, 'system');
+                }
+            } else if (cixiongChoice === 'draw') {
+                const drawn = this.drawCard();
+                source.hand.push(drawn);
+                this.log(`${source.hero.name}发动【雌雄双股剑】，摸了一张牌`, sourceIdx === 0 ? 'player' : 'ai');
+                this.sayHeroLine(sourceIdx, 'skill');
+                this.render();
+                await this.delay(600);
+            }
+        }
+
         let needShan = 1;
         if (hasSkill(source.hero, '无双')) needShan = 2;
 
@@ -550,6 +587,13 @@ Object.assign(MultiGame, {
             if (response.play) {
                 target.hand = target.hand.filter(c => c.id !== response.card.id);
                 this.discardPile.push(response.card);
+                // 无懈可击抵消锦囊效果
+                if (response.card.defKey === 'wuxiekeji') {
+                    this.log(`${target.hero.name}使用【无懈可击】抵消【南蛮入侵】`, targetIdx === 0 ? 'player' : 'ai');
+                    this.sayHeroLine(targetIdx, 'skill');
+                    this.render();
+                    continue;
+                }
                 const skillText = response.card.defKey === 'shan' ? '（龙胆）' : '';
                 this.log(`${target.hero.name}出【杀】${skillText}抵挡`, targetIdx === 0 ? 'player' : 'ai');
                 if (response.card.defKey === 'shan') this.sayHeroLine(targetIdx, 'skill');
@@ -587,6 +631,13 @@ Object.assign(MultiGame, {
             if (response.play) {
                 target.hand = target.hand.filter(c => c.id !== response.card.id);
                 this.discardPile.push(response.card);
+                // 无懈可击抵消锦囊效果
+                if (response.card.defKey === 'wuxiekeji') {
+                    this.log(`${target.hero.name}使用【无懈可击】抵消【万箭齐发】`, targetIdx === 0 ? 'player' : 'ai');
+                    this.sayHeroLine(targetIdx, 'skill');
+                    this.render();
+                    continue;
+                }
                 const skillText = response.card.defKey === 'sha' ? '（龙胆）' : '';
                 this.log(`${target.hero.name}出【闪】${skillText}抵挡`, targetIdx === 0 ? 'player' : 'ai');
                 this.sayHeroLine(targetIdx, 'dodge');
@@ -707,20 +758,23 @@ Object.assign(MultiGame, {
         await this.delay(800);
 
         let continueLuoshen = true;
-        while (continueLuoshen) {
+        let luoshenCount = 0;
+        const MAX_LUOSHEN = 15; // 最大洛神次数限制，防止无限循环
+        while (continueLuoshen && luoshenCount < MAX_LUOSHEN) {
+            luoshenCount++;
             const judgeCard = this.drawCard();
             if (!judgeCard) break; // 牌堆为空
 
             this.log(`判定结果：${judgeCard.suit}${judgeCard.number}（${judgeCard.isRed ? '红色' : '黑色'}）`, 'system');
             this.render();
-            await this.delay(800);
+            await this.delay(500);
 
             if (!judgeCard.isRed) {
                 // 黑色：获得此牌，可以继续
                 player.hand.push(judgeCard);
                 this.log(`${player.hero.name}获得【${judgeCard.name}】（${judgeCard.suit}${judgeCard.number}）`, playerIdx === 0 ? 'player' : 'ai');
                 this.render();
-                await this.delay(600);
+                await this.delay(400);
 
                 // 玩家选择是否继续
                 if (playerIdx === 0 && !player.isAI) {
@@ -734,9 +788,12 @@ Object.assign(MultiGame, {
                 this.discardPile.push(judgeCard);
                 this.log(`判定为红色，【${judgeCard.name}】进入弃牌堆，洛神结束`, 'system');
                 this.render();
-                await this.delay(600);
+                await this.delay(400);
                 continueLuoshen = false;
             }
+        }
+        if (luoshenCount >= MAX_LUOSHEN) {
+            this.log(`洛神已判定${luoshenCount}次，自动结束`, 'system');
         }
     },
 
@@ -811,17 +868,80 @@ Object.assign(MultiGame, {
     },
 
     // ===== 五谷丰登 =====
-    resolveWugu(sourceIdx) {
+    async resolveWugu(sourceIdx) {
         const source = this.players[sourceIdx];
-        this.log(`${source.hero.name}使用【五谷丰登】，所有角色摸一张牌`, sourceIdx === 0 ? 'player' : 'ai');
+        const alivePlayers = this.players.filter(p => !p.dead);
+        const totalPlayers = alivePlayers.length;
+        
+        this.log(`${source.hero.name}使用【五谷丰登】`, sourceIdx === 0 ? 'player' : 'ai');
         this.sayHeroLine(sourceIdx, 'skill');
-        for (let i = 0; i < this.players.length; i++) {
-            const p = this.players[i];
-            if (!p.dead) {
-                p.hand.push(this.drawCard());
-                this.log(`${p.hero.name}摸了一张牌`, i === 0 ? 'player' : 'ai');
+        this.processing = true;
+        this.render();
+        await this.delay(1000);
+        
+        // 亮出X张牌（X=存活角色数）
+        const revealedCards = [];
+        for (let i = 0; i < totalPlayers; i++) {
+            const card = this.drawCard();
+            if (card) revealedCards.push(card);
+        }
+        
+        if (revealedCards.length === 0) {
+            this.log('牌堆已空，五谷丰登无效', 'system');
+            this.processing = false;
+            this.render();
+            return;
+        }
+        
+        this.log(`亮出的牌：${revealedCards.map(c => `【${c.name}】`).join('、')}`, 'system');
+        this.render();
+        await this.delay(1500);
+        
+        // 从source开始，每个存活玩家轮流选一张
+        const order = [];
+        for (let i = sourceIdx; i < this.players.length; i++) {
+            if (!this.players[i].dead) order.push(i);
+        }
+        for (let i = 0; i < sourceIdx; i++) {
+            if (!this.players[i].dead) order.push(i);
+        }
+        
+        for (const playerIdx of order) {
+            if (revealedCards.length === 0) break;
+            const player = this.players[playerIdx];
+            
+            if (playerIdx === 0) {
+                // 玩家选择
+                const selectedCard = await this.askPlayerWugu(revealedCards);
+                const idx = revealedCards.findIndex(c => c.id === selectedCard.id);
+                if (idx >= 0) {
+                    const card = revealedCards.splice(idx, 1)[0];
+                    player.hand.push(card);
+                    this.log(`你选择了【${card.name}】`, 'player');
+                    this.render();
+                    await this.delay(600);
+                }
+            } else {
+                // AI选择
+                const selectedCard = MultiAI.decideWuguSelection(revealedCards, this);
+                const idx = revealedCards.findIndex(c => c.id === selectedCard.id);
+                if (idx >= 0) {
+                    const card = revealedCards.splice(idx, 1)[0];
+                    player.hand.push(card);
+                    this.log(`${player.hero.name}选择了【${card.name}】`, 'ai');
+                    this.render();
+                    await this.delay(1000);
+                }
             }
         }
+        
+        // 剩余牌进入弃牌堆
+        if (revealedCards.length > 0) {
+            this.discardPile.push(...revealedCards);
+            this.log(`剩余的${revealedCards.length}张牌进入弃牌堆`, 'system');
+        }
+        
+        if (!this.gameOver && this.currentPlayer === 0) this.processing = false;
         this.render();
     },
 

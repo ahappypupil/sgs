@@ -794,17 +794,18 @@ const Game = {
     // ===== AI回合 =====
     async startAITurn() {
         if (this.gameOver) return;
-        this.currentPlayer = 1;
-        this.hasSlashedThisTurn = false;
-        this.hasUsedKurouThisTurn = false;
-        this.hasUsedZhihengThisTurn = false;
-        this.hasUsedLijianThisTurn = false;
-        this.hasUsedFanjianThisTurn = false;
-        this.hasUsedQingnangThisTurn = false;
-        this.hasUsedJieyinThisTurn = false;
-        this.hasUsedGuanxingThisTurn = false;
-        this.log(`${this.players[1].hero.name}回合开始`, 'ai');
-        this.sayHeroLine(1, 'turnStart');
+        try {
+            this.currentPlayer = 1;
+            this.hasSlashedThisTurn = false;
+            this.hasUsedKurouThisTurn = false;
+            this.hasUsedZhihengThisTurn = false;
+            this.hasUsedLijianThisTurn = false;
+            this.hasUsedFanjianThisTurn = false;
+            this.hasUsedQingnangThisTurn = false;
+            this.hasUsedJieyinThisTurn = false;
+            this.hasUsedGuanxingThisTurn = false;
+            this.log(`${this.players[1].hero.name}回合开始`, 'ai');
+            this.sayHeroLine(1, 'turnStart');
         
         // 观星技能（诸葛亮）- 回合开始阶段
         await this.processGuanxing(1);
@@ -905,6 +906,21 @@ const Game = {
         
         this.log(`${this.players[1].hero.name}回合结束`, 'ai');
         setTimeout(() => this.startPlayerTurn(), 500);
+        
+        } catch (e) {
+            // 异常恢复：确保游戏不会卡死
+            console.error('AI回合异常:', e);
+            this.log('AI回合出现异常，自动跳过', 'system');
+            this.aiRunning = false;
+            this.processing = false;
+            this.responseResolver = null;
+            this.responseMode = null;
+            document.getElementById('response-panel').classList.add('hidden');
+            this.render();
+            if (!this.gameOver) {
+                setTimeout(() => this.startPlayerTurn(), 800);
+            }
+        }
     },
 
     async aiPlayPhase() {
@@ -1866,6 +1882,31 @@ const Game = {
             return;
         }
         
+        // 雌雄双股剑：指定目标后触发
+        if (source.equipment.weapon && source.equipment.weapon.defKey === 'cixiongshuanggujian') {
+            const choice = await this.askCixiong(target.hero.name);
+            if (choice === 'discard') {
+                if (target.hand.length > 0) {
+                    const cardToDiscard = AI.chooseDiscard(this, targetIdx, 1)[0];
+                    if (cardToDiscard) {
+                        target.hand = target.hand.filter(c => c.id !== cardToDiscard.id);
+                        this.discardPile.push(cardToDiscard);
+                        this.log(`你发动【雌雄双股剑】，${target.hero.name}弃置【${cardToDiscard.name}】`, 'player');
+                        this.sayHeroLine(0, 'skill');
+                        this.render();
+                    }
+                } else {
+                    this.log(`${target.hero.name}没有手牌可弃`, 'system');
+                }
+            } else if (choice === 'draw') {
+                const drawn = this.drawCard();
+                source.hand.push(drawn);
+                this.log(`你发动【雌雄双股剑】，摸了一张牌`, 'player');
+                this.sayHeroLine(0, 'skill');
+                this.render();
+            }
+        }
+        
         // 无双：需要2张闪
         let needShan = 1;
         if (hasSkill(source.hero, '无双')) needShan = 2;
@@ -1949,6 +1990,30 @@ const Game = {
             this.log(`${target.hero.name}空城，不能成为杀的目标`, 'system');
             this.render();
             return;
+        }
+        
+        // 雌雄双股剑：指定目标后触发
+        if (source.equipment.weapon && source.equipment.weapon.defKey === 'cixiongshuanggujian') {
+            const choice = AI.decideCixiong(source, target, this);
+            if (choice === 'discard') {
+                if (target.hand.length > 0) {
+                    // 随机选择目标的一张手牌弃置
+                    const cardToDiscard = target.hand[Math.floor(Math.random() * target.hand.length)];
+                    target.hand = target.hand.filter(c => c.id !== cardToDiscard.id);
+                    this.discardPile.push(cardToDiscard);
+                    this.log(`${source.hero.name}发动【雌雄双股剑】，你弃置【${cardToDiscard.name}】`, 'ai');
+                    this.sayHeroLine(1, 'skill');
+                    this.render();
+                    await this.delay(1000);
+                }
+            } else {
+                const drawn = this.drawCard();
+                source.hand.push(drawn);
+                this.log(`${source.hero.name}发动【雌雄双股剑】，摸了一张牌`, 'ai');
+                this.sayHeroLine(1, 'skill');
+                this.render();
+                await this.delay(800);
+            }
         }
         
         let needShan = 1;
@@ -2628,20 +2693,23 @@ const Game = {
         await this.delay(800);
 
         let continueLuoshen = true;
-        while (continueLuoshen) {
+        let luoshenCount = 0;
+        const MAX_LUOSHEN = 15; // 最大洛神次数限制，防止无限循环
+        while (continueLuoshen && luoshenCount < MAX_LUOSHEN) {
+            luoshenCount++;
             const judgeCard = this.drawCard();
             if (!judgeCard) break; // 牌堆为空
 
             this.log(`判定结果：${judgeCard.suit}${judgeCard.number}（${judgeCard.isRed ? '红色' : '黑色'}）`, 'system');
             this.render();
-            await this.delay(800);
+            await this.delay(500);
 
             if (!judgeCard.isRed) {
                 // 黑色：获得此牌，可以继续
                 player.hand.push(judgeCard);
                 this.log(`${player.hero.name}获得【${judgeCard.name}】（${judgeCard.suit}${judgeCard.number}）`, playerIdx === 0 ? 'player' : 'ai');
                 this.render();
-                await this.delay(600);
+                await this.delay(400);
 
                 // 玩家选择是否继续
                 if (playerIdx === 0 && !player.isAI) {
@@ -2655,9 +2723,12 @@ const Game = {
                 this.discardPile.push(judgeCard);
                 this.log(`判定为红色，【${judgeCard.name}】进入弃牌堆，洛神结束`, 'system');
                 this.render();
-                await this.delay(600);
+                await this.delay(400);
                 continueLuoshen = false;
             }
+        }
+        if (luoshenCount >= MAX_LUOSHEN) {
+            this.log(`洛神已判定${luoshenCount}次，自动结束`, 'system');
         }
     },
 
@@ -2819,14 +2890,17 @@ const Game = {
     // ===== 五谷丰登结算 =====
     async resolveWugu(sourceIdx) {
         const isPlayer = sourceIdx === 0;
-        this.log(`使用【五谷丰登】，所有角色摸一张牌`, isPlayer ? 'player' : 'ai');
+        const source = this.players[sourceIdx];
+        const totalPlayers = this.players.filter(p => p.hp > 0).length;
+        
+        this.log(`${source.hero.name}使用【五谷丰登】`, isPlayer ? 'player' : 'ai');
         this.sayHeroLine(sourceIdx, 'skill');
         this.processing = true;
         this.render();
+        await this.delay(1000);
         
         // 询问对方是否使用无懈可击
         if (isPlayer) {
-            // 玩家使用，询问AI是否无懈（简化处理：AI自己决定是否无懈）
             const wuxieResponse = AI.decideWuxiekeji(this, '五谷丰登');
             if (wuxieResponse.useWuxie) {
                 const ai = this.players[1];
@@ -2839,7 +2913,6 @@ const Game = {
                 return;
             }
         } else {
-            // AI使用，询问玩家是否无懈
             const wuxieResponse = await this.askPlayerWuxiekeji('五谷丰登');
             if (wuxieResponse.useWuxie) {
                 this.log(`你使用【无懈可击】抵消【五谷丰登】`, 'player');
@@ -2850,14 +2923,143 @@ const Game = {
             }
         }
         
-        for (let i = 0; i < this.players.length; i++) {
-            const p = this.players[i];
+        // 亮出X张牌（X=存活角色数）
+        const revealedCards = [];
+        for (let i = 0; i < totalPlayers; i++) {
             const card = this.drawCard();
-            p.hand.push(card);
-            this.log(`${p.hero.name}摸了一张牌`, i === 0 ? 'player' : 'ai');
+            if (card) revealedCards.push(card);
         }
+        
+        if (revealedCards.length === 0) {
+            this.log('牌堆已空，五谷丰登无效', 'system');
+            this.processing = false;
+            this.render();
+            return;
+        }
+        
+        this.log(`亮出的牌：${revealedCards.map(c => `【${c.name}】`).join('、')}`, 'system');
+        this.render();
+        await this.delay(1500);
+        
+        // 从source开始，每个存活玩家轮流选一张
+        const order = [];
+        for (let i = sourceIdx; i < this.players.length; i++) {
+            if (this.players[i].hp > 0) order.push(i);
+        }
+        for (let i = 0; i < sourceIdx; i++) {
+            if (this.players[i].hp > 0) order.push(i);
+        }
+        
+        for (const playerIdx of order) {
+            if (revealedCards.length === 0) break;
+            const player = this.players[playerIdx];
+            
+            if (playerIdx === 0) {
+                // 玩家选择
+                const selectedCard = await this.askPlayerWugu(revealedCards);
+                const idx = revealedCards.findIndex(c => c.id === selectedCard.id);
+                if (idx >= 0) {
+                    const card = revealedCards.splice(idx, 1)[0];
+                    player.hand.push(card);
+                    this.log(`你选择了【${card.name}】`, 'player');
+                    this.render();
+                    await this.delay(600);
+                }
+            } else {
+                // AI选择
+                const selectedCard = AI.decideWuguSelection(revealedCards, this);
+                const idx = revealedCards.findIndex(c => c.id === selectedCard.id);
+                if (idx >= 0) {
+                    const card = revealedCards.splice(idx, 1)[0];
+                    player.hand.push(card);
+                    this.log(`${player.hero.name}选择了【${card.name}】`, 'ai');
+                    this.render();
+                    await this.delay(1000);
+                }
+            }
+        }
+        
+        // 剩余牌进入弃牌堆
+        if (revealedCards.length > 0) {
+            this.discardPile.push(...revealedCards);
+            this.log(`剩余的${revealedCards.length}张牌进入弃牌堆`, 'system');
+        }
+        
         this.processing = false;
         this.render();
+    },
+    
+    // 询问玩家五谷丰登选牌
+    askPlayerWugu(revealedCards) {
+        return new Promise((resolve) => {
+            this.responseMode = 'wugu';
+            this.responseResolver = resolve;
+            
+            document.getElementById('response-prompt').textContent = '五谷丰登：请选择一张牌';
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+            
+            revealedCards.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.classList.add('playable');
+                cardEl.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r(card);
+                });
+                container.appendChild(cardEl);
+            });
+            
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
+    // 询问是否发动雌雄双股剑
+    askCixiong(targetName) {
+        return new Promise((resolve) => {
+            this.responseMode = 'cixiong';
+            this.responseResolver = resolve;
+            
+            document.getElementById('response-prompt').textContent = `【雌雄双股剑】对${targetName}发动效果：`;
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+            
+            // 选项：令对方弃牌
+            const discardBtn = document.createElement('button');
+            discardBtn.textContent = '令其弃一张手牌';
+            discardBtn.className = 'card playable';
+            discardBtn.style.cssText = 'padding:8px 16px;margin:6px;font-size:14px;cursor:pointer;border-radius:6px;background:#e74c3c;color:white;border:none;';
+            discardBtn.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r('discard');
+            });
+            container.appendChild(discardBtn);
+            
+            // 选项：自己摸牌
+            const drawBtn = document.createElement('button');
+            drawBtn.textContent = '摸一张牌';
+            drawBtn.className = 'card playable';
+            drawBtn.style.cssText = 'padding:8px 16px;margin:6px;font-size:14px;cursor:pointer;border-radius:6px;background:#3498db;color:white;border:none;';
+            drawBtn.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r('draw');
+            });
+            container.appendChild(drawBtn);
+            
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
     },
 
     // ===== 装备 =====
@@ -3235,6 +3437,7 @@ const Game = {
         if (this.responseMode === 'nanman') {
             if (card.defKey === 'sha') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'shan') return true;
+            if (card.defKey === 'wuxiekeji') return true;
             return false;
         }
         if (this.responseMode === 'wanjian') {
@@ -3242,6 +3445,7 @@ const Game = {
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
             // 倾国（甄姬）：黑色手牌当闪
             if (hasSkill(player.hero, '倾国') && !card.isRed) return true;
+            if (card.defKey === 'wuxiekeji') return true;
             return false;
         }
         if (this.responseMode === 'peach') {

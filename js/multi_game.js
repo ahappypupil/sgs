@@ -429,10 +429,24 @@ const MultiGame = {
         }
 
         if (player.isAI) {
-            await this.delay(600);
-            await this.aiPlayPhase(playerIdx);
-            if (this.gameOver) return;
-            await this.endTurn(playerIdx);
+            try {
+                await this.delay(600);
+                await this.aiPlayPhase(playerIdx);
+                if (this.gameOver) return;
+                await this.endTurn(playerIdx);
+            } catch (e) {
+                console.error('AI回合异常:', e);
+                this.log(`${player.hero.name}出现异常，自动跳过回合`, 'system');
+                this.processing = false;
+                this.responseResolver = null;
+                this.responseMode = null;
+                const panel = document.getElementById('response-panel');
+                if (panel) panel.classList.add('hidden');
+                this.render();
+                if (!this.gameOver) {
+                    this.nextTurn();
+                }
+            }
         }
         // 人类玩家等待手动操作
     },

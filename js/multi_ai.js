@@ -446,5 +446,29 @@ const MultiAI = {
             return 'damage';
         }
         return 'damage';
+    },
+
+    // 五谷丰登选牌
+    decideWuguSelection(revealedCards, game) {
+        const priority = {
+            'wuzhongshengyou': 10, 'tao': 9, 'wuxiekeji': 7,
+            'sha': 5, 'shan': 5, 'guohe': 4, 'shunshou': 4,
+            'juedou': 3, 'nanman': 3, 'wanjian': 3,
+            'taoyuan': 2, 'wugu': 2, 'lebusishu': 2, 'shandian': 1
+        };
+        const sorted = [...revealedCards].sort((a, b) => {
+            const pa = priority[a.defKey] || (a.type === 'equipment' ? 3 : 0);
+            const pb = priority[b.defKey] || (b.type === 'equipment' ? 3 : 0);
+            return pb - pa;
+        });
+        return sorted[0];
+    },
+
+    // 雌雄双股剑决策
+    decideCixiong(player, target, game) {
+        if (target.hand.length >= 2 && Math.random() < 0.5) {
+            return 'discard';
+        }
+        return 'draw';
     }
 };

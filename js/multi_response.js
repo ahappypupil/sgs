@@ -144,8 +144,10 @@ Object.assign(MultiGame, {
             const player = this.players[0];
             const shas = player.hand.filter(c => c.defKey === 'sha');
             const longdanShans = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'shan') : [];
+            // 无懈可击
+            const wuxieCards = player.hand.filter(c => c.defKey === 'wuxiekeji');
 
-            document.getElementById('response-prompt').textContent = '南蛮入侵！是否出【杀】？';
+            document.getElementById('response-prompt').textContent = '南蛮入侵！是否出【杀】或使用【无懈可击】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
 
@@ -164,6 +166,13 @@ Object.assign(MultiGame, {
                     cardEl.style.position = 'relative';
                     cardEl.appendChild(badge);
                 }
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+
+            // 显示无懈可击
+            wuxieCards.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
             });
@@ -187,12 +196,21 @@ Object.assign(MultiGame, {
             const shas = hasSkill(player.hero, '龙胆') ? player.hand.filter(c => c.defKey === 'sha') : [];
             // 倾国（甄姬）：黑色手牌当闪
             const qingguoCards = hasSkill(player.hero, '倾国') ? player.hand.filter(c => !c.isRed && c.defKey !== 'shan') : [];
+            // 无懈可击
+            const wuxieCards = player.hand.filter(c => c.defKey === 'wuxiekeji');
 
-            document.getElementById('response-prompt').textContent = '万箭齐发！是否出【闪】？';
+            document.getElementById('response-prompt').textContent = '万箭齐发！是否出【闪】或使用【无懈可击】？';
             const container = document.getElementById('response-cards');
             container.innerHTML = '';
 
             [...shans, ...shas, ...qingguoCards].forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
+                container.appendChild(cardEl);
+            });
+
+            // 显示无懈可击
+            wuxieCards.forEach(card => {
                 const cardEl = this.createCardElement(card, true);
                 cardEl.addEventListener('click', () => this.handleResponseCardClick(card));
                 container.appendChild(cardEl);
@@ -479,6 +497,7 @@ Object.assign(MultiGame, {
         if (this.responseMode === 'nanman') {
             if (card.defKey === 'sha') return true;
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'shan') return true;
+            if (card.defKey === 'wuxiekeji') return true;
             return false;
         }
         if (this.responseMode === 'wanjian') {
@@ -486,6 +505,7 @@ Object.assign(MultiGame, {
             if (hasSkill(player.hero, '龙胆') && card.defKey === 'sha') return true;
             // 倾国（甄姬）：黑色手牌当闪
             if (hasSkill(player.hero, '倾国') && !card.isRed) return true;
+            if (card.defKey === 'wuxiekeji') return true;
             return false;
         }
         if (this.responseMode === 'peach') return card.defKey === 'tao';
@@ -632,5 +652,108 @@ Object.assign(MultiGame, {
             <div class="card-type">${typeLabel}</div>
         `;
         return el;
+    },
+
+    // ===== 雌雄双股剑决策询问 =====
+    askCixiong(targetIdx) {
+        return new Promise((resolve) => {
+            const target = this.players[targetIdx];
+            this.responseMode = 'cixiong';
+            this.responseResolver = resolve;
+            
+            document.getElementById('response-prompt').textContent = `【雌雄双股剑】对${target.hero.name}发动：`;
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+            
+            const discardBtn = document.createElement('button');
+            discardBtn.textContent = '令其弃一张手牌';
+            discardBtn.className = 'card playable';
+            discardBtn.style.cssText = 'padding:8px 16px;margin:6px;font-size:14px;cursor:pointer;border-radius:6px;background:#e74c3c;color:white;border:none;';
+            discardBtn.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r('discard');
+            });
+            container.appendChild(discardBtn);
+            
+            const drawBtn = document.createElement('button');
+            drawBtn.textContent = '摸一张牌';
+            drawBtn.className = 'card playable';
+            drawBtn.style.cssText = 'padding:8px 16px;margin:6px;font-size:14px;cursor:pointer;border-radius:6px;background:#3498db;color:white;border:none;';
+            drawBtn.addEventListener('click', () => {
+                const r = this.responseResolver;
+                this.responseResolver = null;
+                this.responseMode = null;
+                document.getElementById('response-panel').classList.add('hidden');
+                r('draw');
+            });
+            container.appendChild(drawBtn);
+            
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
+    // ===== 询问玩家弃牌 =====
+    askPlayerDiscardCard(promptText) {
+        return new Promise((resolve) => {
+            this.responseMode = 'discard_card';
+            this.responseSelectedCards = [];
+            this.responseResolver = resolve;
+            
+            document.getElementById('response-prompt').textContent = promptText || '请弃置一张手牌';
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+            
+            const player = this.players[0];
+            player.hand.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.classList.add('playable');
+                cardEl.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r(card);
+                });
+                container.appendChild(cardEl);
+            });
+            
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
+    },
+
+    // ===== 询问玩家五谷丰登选牌 =====
+    askPlayerWugu(revealedCards) {
+        return new Promise((resolve) => {
+            this.responseMode = 'wugu';
+            this.responseResolver = resolve;
+            
+            document.getElementById('response-prompt').textContent = '五谷丰登：请选择一张牌';
+            const container = document.getElementById('response-cards');
+            container.innerHTML = '';
+            
+            revealedCards.forEach(card => {
+                const cardEl = this.createCardElement(card, true);
+                cardEl.classList.add('playable');
+                cardEl.addEventListener('click', () => {
+                    const r = this.responseResolver;
+                    this.responseResolver = null;
+                    this.responseMode = null;
+                    document.getElementById('response-panel').classList.add('hidden');
+                    r(card);
+                });
+                container.appendChild(cardEl);
+            });
+            
+            document.getElementById('response-cancel').style.display = 'none';
+            document.getElementById('response-panel').classList.remove('hidden');
+            this.render();
+        });
     }
 });
